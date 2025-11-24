@@ -36,8 +36,11 @@ export function Airport() {
     ? {
         id: selectedBooking.trip?.id || '',
         type: 'airport',
+        created_at: (selectedBooking as any).created_at || null,
         start_time: selectedBooking.pickup_at,
         hub_route: selectedBooking.hub?.name || `${selectedBooking.pickup} → ${selectedBooking.drop}`,
+        hub_name: selectedBooking.hub?.name || null,
+        route: `${selectedBooking.pickup} → ${selectedBooking.drop}`,
         customer_name: selectedBooking.customer?.name || null,
         driver_name: selectedBooking.driver?.name || null,
         vehicle_reg: selectedBooking.vehicle?.reg_no || null,

@@ -1,4 +1,3 @@
-import { useState } from 'react'
 import { TRIP_TYPES, TRIP_STATUSES } from '../../utils/constants'
 
 export interface Filters {
@@ -18,7 +17,7 @@ interface FiltersBarProps {
   vehicles?: Array<{ id: string; reg_no: string }>
 }
 
-export function FiltersBar({ filters, onFiltersChange, hubs, drivers, vehicles }: FiltersBarProps) {
+export function FiltersBar({ filters, onFiltersChange }: FiltersBarProps) {
   const updateFilter = (key: keyof Filters, value: string | undefined) => {
     onFiltersChange({
       ...filters,

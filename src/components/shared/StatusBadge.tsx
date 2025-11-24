@@ -1,5 +1,4 @@
 import { TRIP_STATUSES } from '../../utils/constants'
-import type { TripStatus } from '../../utils/types'
 
 interface StatusBadgeProps {
   status: string

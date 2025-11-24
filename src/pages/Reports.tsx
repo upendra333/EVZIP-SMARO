@@ -1,6 +1,6 @@
 import { useState } from 'react'
-import { useDailySummary, type DailySummaryRow } from '../hooks/useDailySummary'
-import { useWeeklySummary, type WeeklySummaryRow } from '../hooks/useWeeklySummary'
+import { useDailySummary } from '../hooks/useDailySummary'
+import { useWeeklySummary } from '../hooks/useWeeklySummary'
 import { useHubs } from '../hooks/useHubs'
 import { exportToCSV } from '../utils/csvExport'
 

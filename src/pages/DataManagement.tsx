@@ -9,7 +9,7 @@ import { useCreateDriver, useUpdateDriver, useDeleteDriver } from '../hooks/useM
 import { useCreateVehicle, useUpdateVehicle, useDeleteVehicle } from '../hooks/useManageVehicles'
 import { useCreateHub, useUpdateHub, useDeleteHub } from '../hooks/useManageHubs'
 import { useOperator } from '../hooks/useOperator'
-import { PERMISSIONS } from '../utils/permissions'
+import { PERMISSIONS, type Permission } from '../utils/permissions'
 
 type TabType = 'customers' | 'drivers' | 'vehicles' | 'hubs' | 'rides'
 
@@ -137,24 +137,7 @@ function CustomersTab({
   const updateMutation = useUpdateCustomer()
   const deleteMutation = useDeleteCustomer()
 
-  const [formData, setFormData] = useState({ name: '', phone: '', email: '', notes: '' })
   const editingCustomer = customers?.find((c) => c.id === editingId)
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      if (editingId) {
-        await updateMutation.mutateAsync({ id: editingId, ...formData })
-        onCloseEdit()
-      } else {
-        await createMutation.mutateAsync(formData)
-        onCloseAddModal()
-      }
-      setFormData({ name: '', phone: '', email: '', notes: '' })
-    } catch (error: any) {
-      alert(`Error: ${error.message}`)
-    }
-  }
 
   const handleDelete = async (id: string) => {
     if (!confirm('Are you sure you want to delete this customer?')) return

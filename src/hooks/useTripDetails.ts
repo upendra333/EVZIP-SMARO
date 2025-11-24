@@ -48,19 +48,21 @@ export function useTripDetails(tripId: string, tripType: string, refId: string) 
         .single()
 
       if (error) throw error
+      if (!data) throw new Error('No data returned')
 
+      const tripData = data as any
       return {
         id: tripId,
         type: tripType as any,
         ref_id: refId,
-        status: data.status,
-        driver_id: data.driver_id,
-        vehicle_id: data.vehicle_id,
-        notes: data.notes,
-        fare: data.fare,
-        pickup_at: data.pickup_at || null,
-        start_at: data.start_at || null,
-        end_at: data.end_at || null,
+        status: tripData.status,
+        driver_id: tripData.driver_id,
+        vehicle_id: tripData.vehicle_id,
+        notes: tripData.notes,
+        fare: tripData.fare,
+        pickup_at: tripData.pickup_at || null,
+        start_at: tripData.start_at || null,
+        end_at: tripData.end_at || null,
       } as TripDetails
     },
     enabled: !!tripId && !!tripType && !!refId,

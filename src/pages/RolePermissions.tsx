@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { ROLES } from '../utils/constants'
-import { PERMISSIONS, PERMISSION_LABELS, PERMISSION_CATEGORIES, ROLE_PERMISSIONS, type Permission } from '../utils/permissions'
+import { PERMISSION_LABELS, PERMISSION_CATEGORIES, ROLE_PERMISSIONS, type Permission } from '../utils/permissions'
 import type { Role } from '../utils/types'
 
 // Define role order
@@ -8,7 +8,13 @@ const ROLE_ORDER: Role[] = ['read_only', 'supervisor', 'manager', 'admin']
 
 export function RolePermissions() {
   const [selectedRole, setSelectedRole] = useState<Role>('supervisor')
-  const [rolePermissions, setRolePermissions] = useState<Record<Role, Permission[]>>(ROLE_PERMISSIONS)
+  const [rolePermissions, setRolePermissions] = useState<Record<Role, Permission[]>>(() => {
+    const initial: Record<Role, Permission[]> = {} as Record<Role, Permission[]>
+    for (const role of Object.keys(ROLE_PERMISSIONS) as Role[]) {
+      initial[role] = [...ROLE_PERMISSIONS[role]]
+    }
+    return initial
+  })
 
   const handleTogglePermission = (role: Role, permission: Permission) => {
     setRolePermissions((prev) => {
@@ -25,7 +31,8 @@ export function RolePermissions() {
   }
 
   const handleSelectAll = (role: Role, category: string) => {
-    const categoryPerms = (PERMISSION_CATEGORIES[category as keyof typeof PERMISSION_CATEGORIES] || []) as Permission[]
+    const categoryPermsArray = PERMISSION_CATEGORIES[category as keyof typeof PERMISSION_CATEGORIES] || []
+    const categoryPerms: Permission[] = [...categoryPermsArray]
     const currentPerms = rolePermissions[role] || []
     const allSelected = categoryPerms.length > 0 && categoryPerms.every((p) => currentPerms.includes(p))
     
@@ -52,7 +59,11 @@ export function RolePermissions() {
 
   const handleReset = () => {
     if (confirm('Are you sure you want to reset to default permissions?')) {
-      setRolePermissions(ROLE_PERMISSIONS)
+      const reset: Record<Role, Permission[]> = {} as Record<Role, Permission[]>
+      for (const role of Object.keys(ROLE_PERMISSIONS) as Role[]) {
+        reset[role] = [...ROLE_PERMISSIONS[role]]
+      }
+      setRolePermissions(reset)
     }
   }
 
@@ -112,7 +123,7 @@ export function RolePermissions() {
 
         <div className="space-y-6">
           {Object.entries(PERMISSION_CATEGORIES).map(([category, perms]) => {
-            const categoryPerms = perms as Permission[]
+            const categoryPerms: Permission[] = [...perms]
             const selectedCount = categoryPerms.filter((p) => currentPerms.includes(p)).length
             const allSelected = categoryPerms.length > 0 && selectedCount === categoryPerms.length
 

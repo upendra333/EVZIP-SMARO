@@ -36,8 +36,11 @@ export function Rentals() {
     ? {
         id: selectedBooking.trip?.id || '',
         type: 'rental',
+        created_at: (selectedBooking as any).created_at || null,
         start_time: selectedBooking.start_at,
         hub_route: selectedBooking.hub?.name || null,
+        hub_name: selectedBooking.hub?.name || null,
+        route: null,
         customer_name: selectedBooking.customer?.name || null,
         driver_name: selectedBooking.driver?.name || null,
         vehicle_reg: selectedBooking.vehicle?.reg_no || null,

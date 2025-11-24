@@ -6,7 +6,6 @@ import { DateRangeFilter } from '../components/shared/DateRangeFilter'
 import { FiltersBar, type Filters } from '../components/shared/FiltersBar'
 import { TripDrawer } from '../components/shared/TripDrawer'
 import { CreateSubscriptionRideModal } from '../components/shared/CreateSubscriptionRideModal'
-import { TRIP_STATUSES } from '../utils/constants'
 import type { TripListItem } from '../hooks/useTodayTrips'
 
 export function Subscriptions() {
@@ -37,8 +36,11 @@ export function Subscriptions() {
     ? {
         id: selectedRide.trip?.id || '',
         type: 'subscription',
+        created_at: (selectedRide as any).created_at || null,
         start_time: selectedRide.date ? `${selectedRide.date}T09:00:00` : null,
         hub_route: selectedRide.subscription?.hub?.name || `${selectedRide.subscription?.pickup} → ${selectedRide.subscription?.drop}`,
+        hub_name: selectedRide.subscription?.hub?.name || null,
+        route: selectedRide.subscription ? `${selectedRide.subscription.pickup} → ${selectedRide.subscription.drop}` : null,
         customer_name: selectedRide.subscription?.customer?.name || null,
         driver_name: selectedRide.driver?.name || null,
         vehicle_reg: selectedRide.vehicle?.reg_no || null,

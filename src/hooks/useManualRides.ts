@@ -99,8 +99,18 @@ export function useManualRides(filters?: {
 
       if (error) throw error
 
+      // Transform data: convert arrays to single objects
+      const transformedRides = (data || []).map((item: any) => ({
+        ...item,
+        customer: item.customers?.[0] || null,
+        driver: item.drivers?.[0] || null,
+        vehicle: item.vehicles?.[0] || null,
+        hub: item.hubs?.[0] || null,
+        trip: item.trips?.[0] || null,
+      }))
+      
       // Filter by customer name if provided (client-side)
-      let rides = (data || []) as ManualRide[]
+      let rides = transformedRides as ManualRide[]
       if (filters?.customer) {
         rides = rides.filter((ride) =>
           ride.customer?.name?.toLowerCase().includes(filters.customer!.toLowerCase())

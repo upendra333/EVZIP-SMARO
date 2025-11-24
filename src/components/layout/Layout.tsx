@@ -1,4 +1,5 @@
-import { ReactNode, useState, useEffect } from 'react'
+import { useState, useEffect } from 'react'
+import type { ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { Footer } from './Footer'
@@ -10,7 +11,7 @@ interface LayoutProps {
 }
 
 export function Layout({ children }: LayoutProps) {
-  const { operator, isLoading, setOperator, clearOperator } = useOperator()
+  const { operator, isLoading, setOperator } = useOperator()
   const [showOperatorModal, setShowOperatorModal] = useState(false)
 
   // Show operator modal if no operator is set

@@ -22,7 +22,7 @@ interface TripDrawerProps {
 }
 
 export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
-  const { operator, isManager } = useOperator()
+  const { isManager } = useOperator()
   const { getAvailableTransitions, advanceStatus } = useTripStatus()
   const { isAuthenticated, validatePassword, isValidating, clearAuthentication } = useManagerPassword()
   const queryClient = useQueryClient()
@@ -423,32 +423,6 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     }
   }
 
-  const handleStatusSubmit = async (status?: string) => {
-    const targetStatus = status || selectedStatus
-    if (!targetStatus) return
-
-    // Check if manager action required
-    const isProtectedAction = trip.status === 'completed' && targetStatus !== trip.status
-    if (isProtectedAction && isManager() && !isAuthenticated) {
-      setPendingAction(() => () => advanceStatus.mutate({
-        tripId: trip.id,
-        newStatus: targetStatus,
-        cancelReason: cancelReason || undefined,
-      }))
-      setShowManagerModal(true)
-      setShowStatusModal(false)
-      return
-    }
-
-    advanceStatus.mutate({
-      tripId: trip.id,
-      newStatus: targetStatus,
-      cancelReason: cancelReason || undefined,
-    })
-
-    setShowStatusModal(false)
-    setCancelReason('')
-  }
 
   const handleManagerAuthSuccess = async () => {
     setShowManagerModal(false)

@@ -14,8 +14,6 @@ export function DateRangeFilter({
   label = 'Date Range',
 }: DateRangeFilterProps) {
   const today = new Date().toISOString().split('T')[0]
-  const lastWeek = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
-  const lastMonth = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
   const setQuickRange = (days: number) => {
     const from = new Date(Date.now() - days * 24 * 60 * 60 * 1000).toISOString().split('T')[0]

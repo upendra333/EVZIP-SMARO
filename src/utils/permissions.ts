@@ -1,6 +1,5 @@
 // EVZIP Ops Console - Permissions System
 
-import { ROLES } from './constants'
 import type { Role } from './types'
 
 // Define all available permissions

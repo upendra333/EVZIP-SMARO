@@ -105,8 +105,18 @@ export function useRentalBookings(filters?: {
 
       if (error) throw error
 
+      // Transform data: convert arrays to single objects
+      const transformedBookings = (data || []).map((item: any) => ({
+        ...item,
+        customer: item.customers?.[0] || null,
+        driver: item.drivers?.[0] || null,
+        vehicle: item.vehicles?.[0] || null,
+        hub: item.hubs?.[0] || null,
+        trip: item.trips?.[0] || null,
+      }))
+      
       // Filter by customer name if provided (client-side)
-      let bookings = (data || []) as RentalBooking[]
+      let bookings = transformedBookings as RentalBooking[]
       if (filters?.customer) {
         bookings = bookings.filter((booking) =>
           booking.customer?.name?.toLowerCase().includes(filters.customer!.toLowerCase())

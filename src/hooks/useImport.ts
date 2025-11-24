@@ -17,19 +17,6 @@ export interface ImportResult {
 export function useImport() {
   const [isImporting, setIsImporting] = useState(false)
 
-  const validateRows = (
-    data: Record<string, any>[],
-    config: ImportTableConfig,
-    mapping: Record<string, string>
-  ): ValidationError[] => {
-    const errors: ValidationError[] = []
-    data.forEach((row, index) => {
-      const rowErrors = validateRow(row, index, config, mapping)
-      errors.push(...rowErrors)
-    })
-    return errors
-  }
-
   const validateRow = (
     row: Record<string, any>,
     rowIndex: number,

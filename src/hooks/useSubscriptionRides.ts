@@ -118,8 +118,22 @@ export function useSubscriptionRides(filters?: {
 
       if (error) throw error
 
+      // Transform data: convert arrays to single objects
+      const transformedRides = (data || []).map((item: any) => ({
+        ...item,
+        subscription: item.subscriptions?.[0] ? {
+          ...item.subscriptions[0],
+          customer: item.subscriptions[0].customers?.[0] || null,
+          hub: item.subscriptions[0].hubs?.[0] || null,
+          plan: item.subscriptions[0].plans?.[0] || null,
+        } : null,
+        driver: item.drivers?.[0] || null,
+        vehicle: item.vehicles?.[0] || null,
+        trip: item.trips?.[0] || null,
+      }))
+      
       // Filter by customer name if provided (client-side)
-      let rides = (data || []) as SubscriptionRide[]
+      let rides = transformedRides as SubscriptionRide[]
       if (filters?.customer) {
         rides = rides.filter((ride) =>
           ride.subscription?.customer?.name?.toLowerCase().includes(filters.customer!.toLowerCase())
