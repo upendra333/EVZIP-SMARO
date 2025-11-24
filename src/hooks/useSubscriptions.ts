@@ -12,6 +12,18 @@ export interface Subscription {
   distance_km: number | null
   status: string
   hub_id: string | null
+  // New fields
+  client_name: string | null
+  client_mobile: string | null
+  subscription_month: number | null
+  subscription_year: number | null
+  no_of_days: number | null
+  pickup_time: string | null // TIME format HH:MM:SS
+  subscription_amount: number | null // in paise
+  amount_paid_date: string | null // DATE format
+  invoice_no: string | null
+  remarks: string | null
+  preferred_days: 'Mon-Fri' | 'Mon-Sat' | 'Mon-Sun' | null
   customer?: {
     name: string
   }

@@ -7,7 +7,7 @@ import { TripsTable } from '../components/shared/TripsTable'
 import { FiltersBar, type Filters } from '../components/shared/FiltersBar'
 import { TripDrawer } from '../components/shared/TripDrawer'
 import { CreateAirportBookingModal } from '../components/shared/CreateAirportBookingModal'
-import { CreateSubscriptionRideModal } from '../components/shared/CreateSubscriptionRideModal'
+import { CreateSubscriptionModal } from '../components/shared/CreateSubscriptionModal'
 import { CreateRentalBookingModal } from '../components/shared/CreateRentalBookingModal'
 import { CreateManualRideModal } from '../components/shared/CreateManualRideModal'
 import { TRIP_STATUSES } from '../utils/constants'
@@ -19,7 +19,7 @@ export function Dashboard() {
   const [selectedTrip, setSelectedTrip] = useState<TripListItem | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [showAddDropdown, setShowAddDropdown] = useState(false)
-  const [createModalType, setCreateModalType] = useState<'airport' | 'subscription' | 'rental' | 'manual' | null>(null)
+  const [createModalType, setCreateModalType] = useState<'airport' | 'subscription_booking' | 'rental' | 'manual' | null>(null)
 
   const { can } = useOperator()
   const { data: metrics, isLoading: metricsLoading, error: metricsError } = useTodayMetrics()
@@ -195,12 +195,12 @@ export function Dashboard() {
               </button>
               <button
                 onClick={() => {
-                  setCreateModalType('subscription')
+                  setCreateModalType('subscription_booking')
                   setShowAddDropdown(false)
                 }}
                 className="w-full text-left px-4 py-2 hover:bg-gray-50"
               >
-                🔄 Subscription Ride
+                📅 Subscription Booking
               </button>
               <button
                 onClick={() => {
@@ -373,8 +373,8 @@ export function Dashboard() {
           setShowAddDropdown(false)
         }}
       />
-      <CreateSubscriptionRideModal
-        isOpen={createModalType === 'subscription'}
+      <CreateSubscriptionModal
+        isOpen={createModalType === 'subscription_booking'}
         onClose={() => {
           setCreateModalType(null)
           setShowAddDropdown(false)

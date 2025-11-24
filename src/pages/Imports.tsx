@@ -108,69 +108,169 @@ export function Imports() {
       return
     }
 
+    // Helper function to generate example value for a field
+    const getExampleValue = (field: { name: string; label: string; type: string; required: boolean }, rowIndex: number, tableName: string): string => {
+      // Handle specific field names with realistic examples
+      const fieldName = field.name.toLowerCase()
+      const fieldLabel = field.label.toLowerCase()
+
+      // Phone/Mobile fields
+      if (fieldName.includes('phone') || fieldName.includes('mobile')) {
+        return rowIndex === 0 ? '+91-9876543210' : '+91-9876543211'
+      }
+
+      // Email fields
+      if (fieldName.includes('email')) {
+        return rowIndex === 0 ? 'customer1@example.com' : 'customer2@example.com'
+      }
+
+      // Time fields
+      if (fieldName.includes('time') || fieldName === 'pickup_time') {
+        return rowIndex === 0 ? '09:00:00' : '18:00:00'
+      }
+
+      // Status fields
+      if (fieldName === 'status') {
+        if (fieldLabel.includes('driver')) {
+          return rowIndex === 0 ? 'active' : 'active'
+        } else if (fieldLabel.includes('vehicle')) {
+          return rowIndex === 0 ? 'available' : 'available'
+        } else if (fieldLabel.includes('subscription')) {
+          return rowIndex === 0 ? 'active' : 'active'
+        } else {
+          return rowIndex === 0 ? 'created' : 'assigned'
+        }
+      }
+
+      // Amount fields (in paise)
+      if (fieldName.includes('amount') || fieldName.includes('fare') || fieldName.includes('rate')) {
+        if (fieldLabel.includes('paise')) {
+          return rowIndex === 0 ? '50000' : '75000' // 500 INR and 750 INR in paise
+        }
+        return rowIndex === 0 ? '500' : '750'
+      }
+
+      // Month fields
+      if (fieldName.includes('month')) {
+        return rowIndex === 0 ? '1' : '2' // January, February
+      }
+
+      // Year fields
+      if (fieldName.includes('year')) {
+        const currentYear = new Date().getFullYear()
+        return String(currentYear)
+      }
+
+      // Days fields
+      if (fieldName.includes('days') || fieldName === 'no_of_days') {
+        return rowIndex === 0 ? '30' : '60'
+      }
+
+      // KM/Distance fields
+      if (fieldName.includes('km') || fieldName.includes('distance')) {
+        return rowIndex === 0 ? '25.5' : '30.0'
+      }
+
+      // Invoice/Reference fields
+      if (fieldName.includes('invoice') || fieldName.includes('invoice_no')) {
+        return rowIndex === 0 ? 'INV-2025-001' : 'INV-2025-002'
+      }
+
+      // Driver ID fields (string type, not UUID)
+      if (fieldName === 'driver_id' && field.type === 'string') {
+        return rowIndex === 0 ? 'DRV001' : 'DRV002'
+      }
+
+      // Registration number fields
+      if (fieldName.includes('reg_no')) {
+        return rowIndex === 0 ? 'MH-01-AB-1234' : 'MH-01-CD-5678'
+      }
+
+      // Direction fields
+      if (fieldName === 'direction') {
+        return rowIndex === 0 ? 'to_office' : 'from_office'
+      }
+
+      // Location fields
+      if (fieldName === 'pickup' || fieldLabel.includes('pick')) {
+        return rowIndex === 0 ? 'Mumbai Airport' : 'Pune Station'
+      }
+      if (fieldName === 'drop' || fieldLabel.includes('drop')) {
+        return rowIndex === 0 ? 'Mumbai Office' : 'Pune Office'
+      }
+
+      // City fields
+      if (fieldName === 'city') {
+        return rowIndex === 0 ? 'Mumbai' : 'Pune'
+      }
+
+      // Hub name fields
+      if (fieldName === 'name' && tableName === 'hubs') {
+        return rowIndex === 0 ? 'HQ' : 'East'
+      }
+
+      // Customer/Client name fields
+      if (fieldName === 'name' || fieldName === 'client_name') {
+        return rowIndex === 0 ? 'John Doe' : 'Jane Smith'
+      }
+
+      // Notes/Remarks fields
+      if (fieldName.includes('notes') || fieldName.includes('remarks')) {
+        return rowIndex === 0 ? 'Regular customer' : 'VIP customer'
+      }
+
+      // Default handling by type
+      switch (field.type) {
+        case 'string':
+          if (field.required) {
+            return fieldName === 'name' 
+              ? (rowIndex === 0 ? 'Example Name' : 'Another Example')
+              : (rowIndex === 0 ? 'Example Value' : 'Another Value')
+          }
+          return ''
+        case 'number':
+          if (field.required) {
+            return rowIndex === 0 ? '0' : '100'
+          }
+          return ''
+        case 'date':
+          if (field.required) {
+            const date = new Date()
+            if (rowIndex === 1) {
+              date.setDate(date.getDate() + 1)
+            }
+            return fieldName.includes('_at') 
+              ? date.toISOString() 
+              : date.toISOString().split('T')[0]
+          }
+          return ''
+        case 'uuid':
+          if (field.required) {
+            return rowIndex === 0 
+              ? '00000000-0000-0000-0000-000000000000'
+              : '00000000-0000-0000-0000-000000000001'
+          }
+          return ''
+        case 'boolean':
+          if (field.required) {
+            return rowIndex === 0 ? 'true' : 'false'
+          }
+          return ''
+        default:
+          return field.required ? (rowIndex === 0 ? 'Example' : 'Example 2') : ''
+      }
+    }
+
     // Create CSV headers using field labels
     const headers = config.fields.map((field) => field.label)
     
-    // Create example row with placeholder values
+    // Create example rows with realistic placeholder values
     const exampleRow1: Record<string, any> = {}
-    config.fields.forEach((field) => {
-      if (field.required) {
-        switch (field.type) {
-          case 'string':
-            exampleRow1[field.label] = field.name === 'name' ? 'Example Name' : 'Example Value'
-            break
-          case 'number':
-            exampleRow1[field.label] = '0'
-            break
-          case 'date':
-            exampleRow1[field.label] = field.name.includes('_at') 
-              ? new Date().toISOString() 
-              : new Date().toISOString().split('T')[0]
-            break
-          case 'uuid':
-            exampleRow1[field.label] = '00000000-0000-0000-0000-000000000000'
-            break
-          case 'boolean':
-            exampleRow1[field.label] = 'true'
-            break
-          default:
-            exampleRow1[field.label] = 'Example'
-        }
-      } else {
-        exampleRow1[field.label] = ''
-      }
-    })
-
-    // Create second example row with different values
     const exampleRow2: Record<string, any> = {}
+    
     config.fields.forEach((field) => {
-      if (field.required) {
-        switch (field.type) {
-          case 'string':
-            exampleRow2[field.label] = field.name === 'name' ? 'Another Example' : 'Another Value'
-            break
-          case 'number':
-            exampleRow2[field.label] = '100'
-            break
-          case 'date':
-            const date = new Date()
-            date.setDate(date.getDate() + 1)
-            exampleRow2[field.label] = field.name.includes('_at') 
-              ? date.toISOString() 
-              : date.toISOString().split('T')[0]
-            break
-          case 'uuid':
-            exampleRow2[field.label] = '00000000-0000-0000-0000-000000000001'
-            break
-          case 'boolean':
-            exampleRow2[field.label] = 'false'
-            break
-          default:
-            exampleRow2[field.label] = 'Example 2'
-        }
-      } else {
-        exampleRow2[field.label] = ''
-      }
+      exampleRow1[field.label] = getExampleValue(field, 0, config.tableName)
+      exampleRow2[field.label] = getExampleValue(field, 1, config.tableName)
     })
 
     // Use PapaParse to generate properly formatted CSV

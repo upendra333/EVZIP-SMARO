@@ -315,3 +315,99 @@ export function useCreateManualRide() {
   })
 }
 
+export function useCreateSubscription() {
+  const queryClient = useQueryClient()
+  const { operator } = useOperator()
+
+  return useMutation({
+    mutationFn: async (data: {
+      customer_name: string
+      customer_phone?: string
+      start_date: string
+      end_date?: string
+      subscription_month?: number
+      subscription_year?: number
+      no_of_days?: number
+      distance_km?: number
+      pickup: string
+      pickup_time?: string
+      drop: string
+      subscription_amount?: number
+      amount_paid_date?: string
+      invoice_no?: string
+      remarks?: string
+      hub_id?: string
+      preferred_days?: 'Mon-Fri' | 'Mon-Sat' | 'Mon-Sun'
+    }) => {
+      // Get or create customer
+      const customerId = await getOrCreateCustomer(data.customer_name, data.customer_phone)
+
+      // Calculate month and year from start_date if not provided
+      const startDate = new Date(data.start_date)
+      const month = data.subscription_month || startDate.getMonth() + 1
+      const year = data.subscription_year || startDate.getFullYear()
+
+      // Calculate no_of_days if not provided but end_date is provided
+      let noOfDays = data.no_of_days
+      if (!noOfDays && data.end_date) {
+        const endDate = new Date(data.end_date)
+        const diffTime = Math.abs(endDate.getTime() - startDate.getTime())
+        noOfDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+      }
+
+      const { data: subscription, error } = await supabase
+        .from('subscriptions')
+        .insert({
+          customer_id: customerId,
+          start_date: data.start_date,
+          end_date: data.end_date || null,
+          subscription_month: month,
+          subscription_year: year,
+          no_of_days: noOfDays || null,
+          distance_km: data.distance_km || null,
+          pickup: data.pickup,
+          pickup_time: data.pickup_time || null,
+          drop: data.drop,
+          subscription_amount: data.subscription_amount ? data.subscription_amount * 100 : null, // Convert to paise
+          amount_paid_date: data.amount_paid_date || null,
+          invoice_no: data.invoice_no || null,
+          remarks: data.remarks || null,
+          hub_id: data.hub_id || null,
+          client_name: data.customer_name,
+          client_mobile: data.customer_phone || null,
+          preferred_days: data.preferred_days || 'Mon-Sun',
+          status: 'active',
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      // Create audit log entry
+      await supabase.from('audit_log').insert({
+        actor_name: operator?.name || 'System',
+        object: 'subscriptions',
+        object_id: subscription.id,
+        action: 'create',
+        diff_json: { ...data },
+      })
+
+      return subscription
+    },
+    onSuccess: async () => {
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['subscriptionRides'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' })
+      
+      // Explicitly refetch todayMetrics for all variations
+      await queryClient.refetchQueries({ 
+        predicate: (query) => query.queryKey[0] === 'todayMetrics',
+        type: 'active'
+      })
+    },
+  })
+}
+

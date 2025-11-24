@@ -5,14 +5,12 @@ import { SubscriptionRidesTable } from '../components/shared/SubscriptionRidesTa
 import { DateRangeFilter } from '../components/shared/DateRangeFilter'
 import { FiltersBar, type Filters } from '../components/shared/FiltersBar'
 import { TripDrawer } from '../components/shared/TripDrawer'
-import { CreateSubscriptionRideModal } from '../components/shared/CreateSubscriptionRideModal'
 import type { TripListItem } from '../hooks/useTodayTrips'
 
 export function Subscriptions() {
   const [filters, setFilters] = useState<Filters & { dateFrom?: string; dateTo?: string; customer?: string }>({})
   const [selectedRide, setSelectedRide] = useState<SubscriptionRide | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
-  const [createModalOpen, setCreateModalOpen] = useState(false)
 
   const { data: rides, isLoading } = useSubscriptionRides({
     dateFrom: filters.dateFrom,
@@ -52,17 +50,9 @@ export function Subscriptions() {
 
   return (
     <div>
-      <div className="mb-6 flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-text">Subscriptions</h1>
-          <p className="text-gray-600 mt-1">Manage subscription rides</p>
-        </div>
-        <button
-          onClick={() => setCreateModalOpen(true)}
-          className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium flex items-center gap-2"
-        >
-          <span>+</span> Add Ride
-        </button>
+      <div className="mb-6">
+        <h1 className="text-2xl font-bold text-text">Subscriptions</h1>
+        <p className="text-gray-600 mt-1">View subscription rides</p>
       </div>
 
       {/* Date Range Filter */}
@@ -98,12 +88,6 @@ export function Subscriptions() {
           setDrawerOpen(false)
           setSelectedRide(null)
         }}
-      />
-
-      {/* Create Modal */}
-      <CreateSubscriptionRideModal
-        isOpen={createModalOpen}
-        onClose={() => setCreateModalOpen(false)}
       />
     </div>
   )
