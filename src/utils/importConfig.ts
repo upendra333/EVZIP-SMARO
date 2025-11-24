@@ -30,7 +30,7 @@ export const IMPORT_TABLES: ImportTableConfig[] = [
     fields: [
       { name: 'name', label: 'Name', type: 'string', required: true },
       { name: 'phone', label: 'Phone', type: 'string', required: true },
-      { name: 'license_no', label: 'License Number', type: 'string', required: false },
+      { name: 'driver_id', label: 'Driver ID', type: 'string', required: false },
       { name: 'status', label: 'Status', type: 'string', required: false, description: 'active, inactive, on_leave' },
       { name: 'hub_id', label: 'Hub ID', type: 'uuid', required: false },
     ],

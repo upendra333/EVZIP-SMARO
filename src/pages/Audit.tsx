@@ -153,7 +153,7 @@ export function Audit() {
                 : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
             }`}
           >
-            All Activities
+            All Bookings
           </button>
           <button
             onClick={() => {
@@ -231,7 +231,7 @@ export function Audit() {
                   </option>
                 ))
               ) : (
-                // Show all objects for All Activities tab
+                // Show all objects for All Bookings tab
                 objects?.map((obj) => (
                   <option key={obj} value={obj}>
                     {obj}
@@ -261,7 +261,7 @@ export function Audit() {
                   </option>
                 ))
               ) : (
-                // Show all actions for All Activities tab
+                // Show all actions for All Bookings tab
                 actions?.map((action) => (
                   <option key={action} value={action}>
                     {formatAction(action)}
@@ -293,7 +293,7 @@ export function Audit() {
       {activeTab === 'dataManagement' && (
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Data Management Audit:</strong> Shows all changes made to Customers, Drivers, Vehicles, and Hubs through the Data Management page.
+            <strong>Data Management Audit:</strong> Shows all changes made to Customers, Drivers, Vehicles, and Hubs through the Data Management page. Select "Rides" from the Object filter to view ride deletions.
           </p>
         </div>
       )}

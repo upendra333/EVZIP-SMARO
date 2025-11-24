@@ -164,16 +164,17 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     },
     onSuccess: async () => {
       // Invalidate and refetch queries
-      queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
-      queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' })
-      queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' })
-      queryClient.invalidateQueries({ queryKey: ['tripDetails'], refetchType: 'active' })
-      
-      // Explicitly refetch todayMetrics for all variations
-      await queryClient.refetchQueries({ 
-        predicate: (query) => query.queryKey[0] === 'todayMetrics',
-        type: 'active'
-      })
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ 
+          queryKey: ['todayMetrics'],
+          refetchType: 'active',
+          exact: false 
+        }),
+        queryClient.invalidateQueries({ queryKey: ['tripDetails'], refetchType: 'active' }),
+      ])
     },
   })
 

@@ -27,7 +27,7 @@ export interface Driver {
   id: string
   name: string
   phone: string
-  license_no: string | null
+  driver_id: string | null
   status: string
   hub_id: string | null
 }

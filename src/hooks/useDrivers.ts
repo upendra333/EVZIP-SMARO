@@ -5,7 +5,7 @@ export interface Driver {
   id: string
   name: string
   phone: string
-  license_no: string | null
+  driver_id: string | null
   status: string
   hub_id: string | null
 }
@@ -16,7 +16,7 @@ export function useDrivers(hubId?: string | null) {
     queryFn: async () => {
       let query = supabase
         .from('drivers')
-        .select('id, name, phone, license_no, status, hub_id')
+        .select('id, name, phone, driver_id, status, hub_id')
         .eq('status', 'active')
 
       if (hubId) {

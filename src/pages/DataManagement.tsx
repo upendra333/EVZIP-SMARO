@@ -487,9 +487,9 @@ function DriversTab({
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Driver ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">License</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hub</th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
@@ -500,9 +500,9 @@ function DriversTab({
                 const hub = hubs?.find((h) => h.id === driver.hub_id)
                 return (
                   <tr key={driver.id}>
+                    <td className="px-4 py-3 text-sm text-gray-900 font-mono">{driver.driver_id || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{driver.name}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{driver.phone}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600">{driver.license_no || '-'}</td>
                     <td className="px-4 py-3 text-sm">
                       <span className={`px-2 py-1 rounded text-xs ${
                         driver.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
@@ -552,15 +552,15 @@ function EditDriverForm({
   onSave,
   onCancel,
 }: {
-  driver: { id: string; name: string; phone: string; license_no: string | null; status: string; hub_id: string | null }
+  driver: { id: string; name: string; phone: string; driver_id: string | null; status: string; hub_id: string | null }
   hubs: Array<{ id: string; name: string }>
-  onSave: (data: { name?: string; phone?: string; license_no?: string; status?: string; hub_id?: string }) => Promise<void>
+  onSave: (data: { name?: string; phone?: string; driver_id?: string; status?: string; hub_id?: string }) => Promise<void>
   onCancel: () => void
 }) {
   const [formData, setFormData] = useState({
     name: driver.name,
     phone: driver.phone,
-    license_no: driver.license_no || '',
+    driver_id: driver.driver_id || '',
     status: driver.status,
     hub_id: driver.hub_id || '',
   })
@@ -592,15 +592,6 @@ function EditDriverForm({
             required
             value={formData.phone}
             onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">License Number</label>
-          <input
-            type="text"
-            value={formData.license_no}
-            onChange={(e) => setFormData({ ...formData, license_no: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           />
         </div>
@@ -657,13 +648,13 @@ function AddDriverForm({
   onCancel,
 }: {
   hubs: Array<{ id: string; name: string }>
-  onSave: (data: { name: string; phone: string; license_no?: string; status?: string; hub_id?: string }) => Promise<void>
+  onSave: (data: { name: string; phone: string; driver_id?: string; status?: string; hub_id?: string }) => Promise<void>
   onCancel: () => void
 }) {
   const [formData, setFormData] = useState({
     name: '',
     phone: '',
-    license_no: '',
+    driver_id: '',
     status: 'active',
     hub_id: '',
   })
@@ -675,7 +666,7 @@ function AddDriverForm({
         onSubmit={async (e) => {
           e.preventDefault()
           await onSave({ ...formData, hub_id: formData.hub_id || undefined })
-          setFormData({ name: '', phone: '', license_no: '', status: 'active', hub_id: '' })
+          setFormData({ name: '', phone: '', driver_id: '', status: 'active', hub_id: '' })
         }}
         className="space-y-4"
       >
@@ -700,12 +691,13 @@ function AddDriverForm({
           />
         </div>
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">License Number</label>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Driver ID</label>
           <input
             type="text"
-            value={formData.license_no}
-            onChange={(e) => setFormData({ ...formData, license_no: e.target.value })}
+            value={formData.driver_id}
+            onChange={(e) => setFormData({ ...formData, driver_id: e.target.value })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            placeholder="e.g., DRV001"
           />
         </div>
         <div>
