@@ -1,0 +1,258 @@
+// EVZIP Ops Console - Permissions System
+
+import { ROLES } from './constants'
+import type { Role } from './types'
+
+// Define all available permissions
+export const PERMISSIONS = {
+  // Dashboard
+  VIEW_DASHBOARD: 'view_dashboard',
+  
+  // Bookings
+  VIEW_BOOKINGS: 'view_bookings',
+  CREATE_BOOKING: 'create_booking',
+  EDIT_BOOKING: 'edit_booking',
+  DELETE_BOOKING: 'delete_booking',
+  ASSIGN_DRIVER: 'assign_driver',
+  ASSIGN_VEHICLE: 'assign_vehicle',
+  UPDATE_STATUS: 'update_status',
+  UPDATE_FARE: 'update_fare',
+  UPDATE_TIMING: 'update_timing',
+  CANCEL_BOOKING: 'cancel_booking',
+  
+  // Reports
+  VIEW_REPORTS: 'view_reports',
+  EXPORT_REPORTS: 'export_reports',
+  
+  // Data Management
+  VIEW_CUSTOMERS: 'view_customers',
+  CREATE_CUSTOMER: 'create_customer',
+  EDIT_CUSTOMER: 'edit_customer',
+  DELETE_CUSTOMER: 'delete_customer',
+  
+  VIEW_DRIVERS: 'view_drivers',
+  CREATE_DRIVER: 'create_driver',
+  EDIT_DRIVER: 'edit_driver',
+  DELETE_DRIVER: 'delete_driver',
+  
+  VIEW_VEHICLES: 'view_vehicles',
+  CREATE_VEHICLE: 'create_vehicle',
+  EDIT_VEHICLE: 'edit_vehicle',
+  DELETE_VEHICLE: 'delete_vehicle',
+  
+  VIEW_HUBS: 'view_hubs',
+  CREATE_HUB: 'create_hub',
+  EDIT_HUB: 'edit_hub',
+  DELETE_HUB: 'delete_hub',
+  
+  VIEW_RIDES: 'view_rides',
+  
+  // Imports
+  VIEW_IMPORTS: 'view_imports',
+  IMPORT_DATA: 'import_data',
+  
+  // Audit
+  VIEW_AUDIT: 'view_audit',
+  
+  // User Management
+  VIEW_USERS: 'view_users',
+  CREATE_USER: 'create_user',
+  EDIT_USER: 'edit_user',
+  DELETE_USER: 'delete_user',
+  MANAGE_ROLES: 'manage_roles',
+  MANAGE_PERMISSIONS: 'manage_permissions',
+} as const
+
+export type Permission = typeof PERMISSIONS[keyof typeof PERMISSIONS]
+
+// Role to Permissions mapping
+export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
+  read_only: [
+    PERMISSIONS.VIEW_DASHBOARD,
+  ],
+  
+  supervisor: [
+    PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_BOOKINGS,
+    PERMISSIONS.CREATE_BOOKING,
+    PERMISSIONS.EDIT_BOOKING,
+    PERMISSIONS.ASSIGN_DRIVER,
+    PERMISSIONS.ASSIGN_VEHICLE,
+    PERMISSIONS.UPDATE_STATUS,
+    PERMISSIONS.UPDATE_TIMING,
+    PERMISSIONS.CANCEL_BOOKING,
+    PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.EXPORT_REPORTS,
+    PERMISSIONS.VIEW_CUSTOMERS,
+    PERMISSIONS.CREATE_CUSTOMER,
+    PERMISSIONS.EDIT_CUSTOMER,
+    PERMISSIONS.VIEW_DRIVERS,
+    PERMISSIONS.VIEW_VEHICLES,
+    PERMISSIONS.VIEW_HUBS,
+    PERMISSIONS.VIEW_RIDES,
+    PERMISSIONS.VIEW_IMPORTS,
+    PERMISSIONS.IMPORT_DATA,
+    PERMISSIONS.VIEW_AUDIT,
+  ],
+  
+  manager: [
+    PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_BOOKINGS,
+    PERMISSIONS.CREATE_BOOKING,
+    PERMISSIONS.EDIT_BOOKING,
+    PERMISSIONS.DELETE_BOOKING,
+    PERMISSIONS.ASSIGN_DRIVER,
+    PERMISSIONS.ASSIGN_VEHICLE,
+    PERMISSIONS.UPDATE_STATUS,
+    PERMISSIONS.UPDATE_FARE,
+    PERMISSIONS.UPDATE_TIMING,
+    PERMISSIONS.CANCEL_BOOKING,
+    PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.EXPORT_REPORTS,
+    PERMISSIONS.VIEW_CUSTOMERS,
+    PERMISSIONS.CREATE_CUSTOMER,
+    PERMISSIONS.EDIT_CUSTOMER,
+    PERMISSIONS.DELETE_CUSTOMER,
+    PERMISSIONS.VIEW_DRIVERS,
+    PERMISSIONS.CREATE_DRIVER,
+    PERMISSIONS.EDIT_DRIVER,
+    PERMISSIONS.DELETE_DRIVER,
+    PERMISSIONS.VIEW_VEHICLES,
+    PERMISSIONS.CREATE_VEHICLE,
+    PERMISSIONS.EDIT_VEHICLE,
+    PERMISSIONS.DELETE_VEHICLE,
+    PERMISSIONS.VIEW_HUBS,
+    PERMISSIONS.CREATE_HUB,
+    PERMISSIONS.EDIT_HUB,
+    PERMISSIONS.DELETE_HUB,
+    PERMISSIONS.VIEW_RIDES,
+    PERMISSIONS.VIEW_IMPORTS,
+    PERMISSIONS.IMPORT_DATA,
+    PERMISSIONS.VIEW_AUDIT,
+  ],
+  
+  admin: [
+    // Admin has all permissions
+    ...Object.values(PERMISSIONS),
+  ],
+}
+
+// Helper function to check if a role has a permission
+export function hasPermission(role: Role, permission: Permission): boolean {
+  const rolePerms = ROLE_PERMISSIONS[role] || []
+  return rolePerms.includes(permission)
+}
+
+// Get all permissions for a role
+export function getRolePermissions(role: Role): Permission[] {
+  return ROLE_PERMISSIONS[role] || []
+}
+
+// Get human-readable permission labels
+export const PERMISSION_LABELS: Record<Permission, string> = {
+  [PERMISSIONS.VIEW_DASHBOARD]: 'View Dashboard',
+  [PERMISSIONS.VIEW_BOOKINGS]: 'View Bookings',
+  [PERMISSIONS.CREATE_BOOKING]: 'Create Booking',
+  [PERMISSIONS.EDIT_BOOKING]: 'Edit Booking',
+  [PERMISSIONS.DELETE_BOOKING]: 'Delete Booking',
+  [PERMISSIONS.ASSIGN_DRIVER]: 'Assign Driver',
+  [PERMISSIONS.ASSIGN_VEHICLE]: 'Assign Vehicle',
+  [PERMISSIONS.UPDATE_STATUS]: 'Update Status',
+  [PERMISSIONS.UPDATE_FARE]: 'Update Fare',
+  [PERMISSIONS.UPDATE_TIMING]: 'Update Timing',
+  [PERMISSIONS.CANCEL_BOOKING]: 'Cancel Booking',
+  [PERMISSIONS.VIEW_REPORTS]: 'View Reports',
+  [PERMISSIONS.EXPORT_REPORTS]: 'Export Reports',
+  [PERMISSIONS.VIEW_CUSTOMERS]: 'View Customers',
+  [PERMISSIONS.CREATE_CUSTOMER]: 'Create Customer',
+  [PERMISSIONS.EDIT_CUSTOMER]: 'Edit Customer',
+  [PERMISSIONS.DELETE_CUSTOMER]: 'Delete Customer',
+  [PERMISSIONS.VIEW_DRIVERS]: 'View Drivers',
+  [PERMISSIONS.CREATE_DRIVER]: 'Create Driver',
+  [PERMISSIONS.EDIT_DRIVER]: 'Edit Driver',
+  [PERMISSIONS.DELETE_DRIVER]: 'Delete Driver',
+  [PERMISSIONS.VIEW_VEHICLES]: 'View Vehicles',
+  [PERMISSIONS.CREATE_VEHICLE]: 'Create Vehicle',
+  [PERMISSIONS.EDIT_VEHICLE]: 'Edit Vehicle',
+  [PERMISSIONS.DELETE_VEHICLE]: 'Delete Vehicle',
+  [PERMISSIONS.VIEW_HUBS]: 'View Hubs',
+  [PERMISSIONS.CREATE_HUB]: 'Create Hub',
+  [PERMISSIONS.EDIT_HUB]: 'Edit Hub',
+  [PERMISSIONS.DELETE_HUB]: 'Delete Hub',
+  [PERMISSIONS.VIEW_RIDES]: 'View Rides',
+  [PERMISSIONS.VIEW_IMPORTS]: 'View Imports',
+  [PERMISSIONS.IMPORT_DATA]: 'Import Data',
+  [PERMISSIONS.VIEW_AUDIT]: 'View Audit',
+  [PERMISSIONS.VIEW_USERS]: 'View Users',
+  [PERMISSIONS.CREATE_USER]: 'Create User',
+  [PERMISSIONS.EDIT_USER]: 'Edit User',
+  [PERMISSIONS.DELETE_USER]: 'Delete User',
+  [PERMISSIONS.MANAGE_ROLES]: 'Manage Roles',
+  [PERMISSIONS.MANAGE_PERMISSIONS]: 'Manage Permissions',
+}
+
+// Group permissions by category
+export const PERMISSION_CATEGORIES = {
+  Dashboard: [
+    PERMISSIONS.VIEW_DASHBOARD,
+  ],
+  Bookings: [
+    PERMISSIONS.VIEW_BOOKINGS,
+    PERMISSIONS.CREATE_BOOKING,
+    PERMISSIONS.EDIT_BOOKING,
+    PERMISSIONS.DELETE_BOOKING,
+    PERMISSIONS.ASSIGN_DRIVER,
+    PERMISSIONS.ASSIGN_VEHICLE,
+    PERMISSIONS.UPDATE_STATUS,
+    PERMISSIONS.UPDATE_FARE,
+    PERMISSIONS.UPDATE_TIMING,
+    PERMISSIONS.CANCEL_BOOKING,
+  ],
+  Reports: [
+    PERMISSIONS.VIEW_REPORTS,
+    PERMISSIONS.EXPORT_REPORTS,
+  ],
+  Customers: [
+    PERMISSIONS.VIEW_CUSTOMERS,
+    PERMISSIONS.CREATE_CUSTOMER,
+    PERMISSIONS.EDIT_CUSTOMER,
+    PERMISSIONS.DELETE_CUSTOMER,
+  ],
+  Drivers: [
+    PERMISSIONS.VIEW_DRIVERS,
+    PERMISSIONS.CREATE_DRIVER,
+    PERMISSIONS.EDIT_DRIVER,
+    PERMISSIONS.DELETE_DRIVER,
+  ],
+  Vehicles: [
+    PERMISSIONS.VIEW_VEHICLES,
+    PERMISSIONS.CREATE_VEHICLE,
+    PERMISSIONS.EDIT_VEHICLE,
+    PERMISSIONS.DELETE_VEHICLE,
+  ],
+  Hubs: [
+    PERMISSIONS.VIEW_HUBS,
+    PERMISSIONS.CREATE_HUB,
+    PERMISSIONS.EDIT_HUB,
+    PERMISSIONS.DELETE_HUB,
+  ],
+  Rides: [
+    PERMISSIONS.VIEW_RIDES,
+  ],
+  Imports: [
+    PERMISSIONS.VIEW_IMPORTS,
+    PERMISSIONS.IMPORT_DATA,
+  ],
+  Audit: [
+    PERMISSIONS.VIEW_AUDIT,
+  ],
+  'User Management': [
+    PERMISSIONS.VIEW_USERS,
+    PERMISSIONS.CREATE_USER,
+    PERMISSIONS.EDIT_USER,
+    PERMISSIONS.DELETE_USER,
+    PERMISSIONS.MANAGE_ROLES,
+    PERMISSIONS.MANAGE_PERMISSIONS,
+  ],
+} as const
+

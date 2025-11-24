@@ -1,0 +1,53 @@
+// EVZIP Ops Console - Constants
+
+import { PERMISSIONS } from './permissions'
+
+export const BRAND_COLORS = {
+  primary: '#6dc7ae',
+  text: '#141339',
+} as const
+
+export const ROUTES = {
+  DASHBOARD: '/',
+  SUBSCRIPTIONS: '/subscriptions',
+  AIRPORT: '/airport',
+  RENTALS: '/rentals',
+  REPORTS: '/reports',
+  IMPORTS: '/imports',
+  AUDIT: '/audit',
+  DATA_MANAGEMENT: '/data-management',
+  ROLE_PERMISSIONS: '/role-permissions',
+} as const
+
+export const NAVIGATION_ITEMS = [
+  { name: 'Dashboard', path: ROUTES.DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_DASHBOARD },
+  { name: 'Reports', path: ROUTES.REPORTS, icon: '📈', permission: PERMISSIONS.VIEW_REPORTS },
+  { name: 'Data Management', path: ROUTES.DATA_MANAGEMENT, icon: '🗂️', permission: PERMISSIONS.VIEW_CUSTOMERS },
+  { name: 'Imports', path: ROUTES.IMPORTS, icon: '📥', permission: PERMISSIONS.VIEW_IMPORTS },
+  { name: 'Audit', path: ROUTES.AUDIT, icon: '📋', permission: PERMISSIONS.VIEW_AUDIT },
+  { name: 'Role & Permissions', path: ROUTES.ROLE_PERMISSIONS, icon: '🔐', permission: PERMISSIONS.MANAGE_PERMISSIONS },
+] as const
+
+export const TRIP_STATUSES = {
+  CREATED: 'created',
+  ASSIGNED: 'assigned',
+  ENROUTE: 'enroute',
+  COMPLETED: 'completed',
+  NO_SHOW: 'no_show',
+  CANCELLED: 'cancelled',
+} as const
+
+export const TRIP_TYPES = {
+  SUBSCRIPTION: 'subscription',
+  AIRPORT: 'airport',
+  RENTAL: 'rental',
+  MANUAL: 'manual',
+} as const
+
+export const ROLES = {
+  SUPERVISOR: 'supervisor',
+  MANAGER: 'manager',
+  READ_ONLY: 'read_only',
+  ADMIN: 'admin',
+} as const
+
