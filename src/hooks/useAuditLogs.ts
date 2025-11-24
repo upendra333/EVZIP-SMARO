@@ -17,13 +17,14 @@ export interface AuditLogFilters {
   dateTo?: string
   actor?: string
   object?: string
+  objects?: string[] // Support multiple object types
   action?: string
   page?: number
   pageSize?: number
 }
 
 export function useAuditLogs(filters: AuditLogFilters = {}) {
-  const { dateFrom, dateTo, actor, object, action, page = 1, pageSize = 50 } = filters
+  const { dateFrom, dateTo, actor, object, objects, action, page = 1, pageSize = 50 } = filters
 
   return useQuery({
     queryKey: ['auditLogs', filters],
@@ -46,8 +47,10 @@ export function useAuditLogs(filters: AuditLogFilters = {}) {
         query = query.eq('actor_name', actor)
       }
 
-      // Object filter
-      if (object) {
+      // Object filter (single or multiple)
+      if (objects && objects.length > 0) {
+        query = query.in('object', objects)
+      } else if (object) {
         query = query.eq('object', object)
       }
 

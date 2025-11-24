@@ -11,6 +11,7 @@ import { Drawer } from '../components/shared/Drawer'
 import { formatAuditSummary, formatDiffJson } from '../utils/auditHelpers'
 
 export function Audit() {
+  const [activeTab, setActiveTab] = useState<'all' | 'dataManagement'>('all')
   const [filters, setFilters] = useState<{
     dateFrom?: string
     dateTo?: string
@@ -23,11 +24,28 @@ export function Audit() {
   const [page, setPage] = useState(1)
   const pageSize = 50
 
+  // Data Management related object types
+  const dataManagementObjects = [
+    'customers',
+    'drivers',
+    'vehicles',
+    'hubs',
+    'subscription_rides',
+    'airport_bookings',
+    'rental_bookings',
+    'manual_rides',
+  ]
+
+  // Use objects filter for Data Management tab
   const { data: auditData, isLoading } = useAuditLogs({
     ...filters,
+    objects: activeTab === 'dataManagement' ? dataManagementObjects : undefined,
+    object: activeTab === 'all' ? filters.object : undefined,
     page,
     pageSize,
   })
+
+  const filteredAuditData = auditData
 
   const { data: actors } = useAuditLogActors()
   const { data: objects } = useAuditLogObjects()
@@ -74,6 +92,38 @@ export function Audit() {
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text">Audit Log</h1>
         <p className="text-gray-600 mt-1">View all system changes and actions</p>
+      </div>
+
+      {/* Tabs */}
+      <div className="mb-6 border-b border-gray-200">
+        <nav className="flex space-x-8">
+          <button
+            onClick={() => {
+              setActiveTab('all')
+              setPage(1)
+            }}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'all'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            All Activities
+          </button>
+          <button
+            onClick={() => {
+              setActiveTab('dataManagement')
+              setPage(1)
+            }}
+            className={`py-4 px-1 border-b-2 font-medium text-sm ${
+              activeTab === 'dataManagement'
+                ? 'border-primary text-primary'
+                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+            }`}
+          >
+            Data Management
+          </button>
+        </nav>
       </div>
 
       {/* Filters */}
@@ -174,6 +224,15 @@ export function Audit() {
         )}
       </div>
 
+      {/* Tab Description */}
+      {activeTab === 'dataManagement' && (
+        <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
+          <p className="text-sm text-blue-800">
+            <strong>Data Management Audit:</strong> Shows all changes made to Customers, Drivers, Vehicles, Hubs, and Rides (Subscription, Airport, Rental, Manual).
+          </p>
+        </div>
+      )}
+
       {/* Audit Log Table */}
       {isLoading ? (
         <div className="bg-white rounded-lg border border-gray-200 p-8 text-center">
@@ -182,7 +241,7 @@ export function Audit() {
             <div className="h-4 bg-gray-200 rounded w-1/2 mx-auto"></div>
           </div>
         </div>
-      ) : auditData && auditData.data.length > 0 ? (
+      ) : filteredAuditData && filteredAuditData.data.length > 0 ? (
         <>
           <div className="bg-white rounded-lg border border-gray-200 overflow-hidden mb-6">
             <div className="overflow-x-auto">
@@ -210,7 +269,7 @@ export function Audit() {
                   </tr>
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
-                  {auditData.data.map((entry) => (
+                  {filteredAuditData.data.map((entry) => (
                     <tr
                       key={entry.id}
                       onClick={() => handleRowClick(entry)}
@@ -244,11 +303,11 @@ export function Audit() {
           </div>
 
           {/* Pagination */}
-          {auditData.totalPages > 1 && (
+          {filteredAuditData && filteredAuditData.totalPages > 1 && (
             <div className="flex items-center justify-between bg-white px-4 py-3 rounded-lg border border-gray-200">
               <div className="text-sm text-gray-700">
-                Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, auditData.total)}{' '}
-                of {auditData.total} entries
+                Showing {(page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredAuditData.total)}{' '}
+                of {filteredAuditData.total} entries
               </div>
               <div className="flex space-x-2">
                 <button
@@ -259,11 +318,11 @@ export function Audit() {
                   Previous
                 </button>
                 <span className="px-4 py-2 text-sm text-gray-700">
-                  Page {page} of {auditData.totalPages}
+                  Page {page} of {filteredAuditData.totalPages}
                 </span>
                 <button
-                  onClick={() => setPage((p) => Math.min(auditData.totalPages, p + 1))}
-                  disabled={page === auditData.totalPages}
+                  onClick={() => setPage((p) => Math.min(filteredAuditData.totalPages, p + 1))}
+                  disabled={page === filteredAuditData.totalPages}
                   className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
                 >
                   Next
