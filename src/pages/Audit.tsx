@@ -24,23 +24,68 @@ export function Audit() {
   const [page, setPage] = useState(1)
   const pageSize = 50
 
-  // Data Management related object types
+  // Data Management related object types (only core data tables, not bookings)
   const dataManagementObjects = [
     'customers',
     'drivers',
     'vehicles',
     'hubs',
-    'subscription_rides',
-    'airport_bookings',
-    'rental_bookings',
-    'manual_rides',
   ]
+
+  // Data Management object options for filter dropdown
+  const dataManagementObjectOptions = [
+    { value: 'customers', label: 'Customers' },
+    { value: 'drivers', label: 'Drivers' },
+    { value: 'vehicles', label: 'Vehicles' },
+    { value: 'hubs', label: 'Hubs' },
+    { value: 'rides', label: 'Rides' }, // This will map to booking tables if needed
+  ]
+
+  // Data Management action options
+  const dataManagementActions = [
+    { value: 'create', label: 'Added' },
+    { value: 'update', label: 'Edited' },
+    { value: 'delete', label: 'Deleted' },
+  ]
+
+  // Handle object filter for Data Management tab
+  // If "rides" is selected, we need to map it to booking tables
+  const getEffectiveObjectFilter = () => {
+    if (activeTab === 'dataManagement') {
+      if (filters.object === 'rides') {
+        // Map "rides" to booking tables
+        return {
+          objects: ['subscription_rides', 'airport_bookings', 'rental_bookings', 'manual_rides'],
+        }
+      } else if (filters.object && dataManagementObjects.includes(filters.object)) {
+        return { object: filters.object }
+      } else {
+        // No specific object filter, show all data management objects
+        return { objects: dataManagementObjects }
+      }
+    }
+    return { object: filters.object }
+  }
+
+  // Map action filter for Data Management tab (create -> create, update -> update, delete -> delete)
+  const getEffectiveActionFilter = () => {
+    if (activeTab === 'dataManagement' && filters.action) {
+      // Map user-friendly names to database action names
+      const actionMap: Record<string, string> = {
+        create: 'create',
+        update: 'update',
+        delete: 'delete',
+      }
+      return actionMap[filters.action] || filters.action
+    }
+    return filters.action
+  }
 
   // Use objects filter for Data Management tab
   const { data: auditData, isLoading } = useAuditLogs({
     ...filters,
-    objects: activeTab === 'dataManagement' ? dataManagementObjects : undefined,
-    object: activeTab === 'all' ? filters.object : undefined,
+    ...getEffectiveObjectFilter(),
+    action: getEffectiveActionFilter(),
     page,
     pageSize,
   })
@@ -178,11 +223,21 @@ export function Audit() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">All Objects</option>
-              {objects?.map((obj) => (
-                <option key={obj} value={obj}>
-                  {obj}
-                </option>
-              ))}
+              {activeTab === 'dataManagement' ? (
+                // Show Data Management specific options
+                dataManagementObjectOptions.map((obj) => (
+                  <option key={obj.value} value={obj.value}>
+                    {obj.label}
+                  </option>
+                ))
+              ) : (
+                // Show all objects for All Activities tab
+                objects?.map((obj) => (
+                  <option key={obj} value={obj}>
+                    {obj}
+                  </option>
+                ))
+              )}
             </select>
           </div>
 
@@ -198,11 +253,21 @@ export function Audit() {
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             >
               <option value="">All Actions</option>
-              {actions?.map((action) => (
-                <option key={action} value={action}>
-                  {formatAction(action)}
-                </option>
-              ))}
+              {activeTab === 'dataManagement' ? (
+                // Show Data Management specific actions
+                dataManagementActions.map((action) => (
+                  <option key={action.value} value={action.value}>
+                    {action.label}
+                  </option>
+                ))
+              ) : (
+                // Show all actions for All Activities tab
+                actions?.map((action) => (
+                  <option key={action} value={action}>
+                    {formatAction(action)}
+                  </option>
+                ))
+              )}
             </select>
           </div>
         </div>
@@ -228,7 +293,7 @@ export function Audit() {
       {activeTab === 'dataManagement' && (
         <div className="mb-4 p-4 bg-blue-50 border border-blue-200 rounded-lg">
           <p className="text-sm text-blue-800">
-            <strong>Data Management Audit:</strong> Shows all changes made to Customers, Drivers, Vehicles, Hubs, and Rides (Subscription, Airport, Rental, Manual).
+            <strong>Data Management Audit:</strong> Shows all changes made to Customers, Drivers, Vehicles, and Hubs through the Data Management page.
           </p>
         </div>
       )}
