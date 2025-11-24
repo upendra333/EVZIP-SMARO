@@ -65,9 +65,9 @@ export function Audit() {
     setPage(1)
   }
 
-  const { before, after, changedFields } = selectedEntry
+  const { before, after, changedFields, isDelete, isCreate } = selectedEntry
     ? formatDiffJson(selectedEntry.diff_json)
-    : { before: {}, after: {}, changedFields: [] }
+    : { before: {}, after: {}, changedFields: [], isDelete: false, isCreate: false }
 
   return (
     <div>
@@ -313,51 +313,103 @@ export function Audit() {
             {/* Diff JSON */}
             {selectedEntry.diff_json && Object.keys(selectedEntry.diff_json).length > 0 && (
               <div className="border-t border-gray-200 pt-6">
-                <h3 className="text-lg font-semibold text-text mb-4">Changes</h3>
-                <div className="space-y-4">
-                  {Object.keys(before).map((key) => {
-                    const beforeValue = before[key]
-                    const afterValue = after[key]
-                    const isChanged = changedFields.includes(key)
+                <h3 className="text-lg font-semibold text-text mb-4">
+                  {isDelete ? 'Deleted Data' : isCreate ? 'Created Data' : 'Changes'}
+                </h3>
+                
+                {isDelete && (
+                  <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p className="text-sm text-red-800 font-medium">
+                      This record was deleted. Below are all the fields that were present before deletion.
+                    </p>
+                  </div>
+                )}
+                
+                {isCreate && (
+                  <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
+                    <p className="text-sm text-green-800 font-medium">
+                      This record was created. Below are all the fields that were set during creation.
+                    </p>
+                  </div>
+                )}
 
-                    return (
-                      <div
-                        key={key}
-                        className={`p-4 rounded-lg border ${
-                          isChanged ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-200'
-                        }`}
-                      >
-                        <div className="font-medium text-gray-700 mb-2">
-                          {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
-                          {isChanged && (
-                            <span className="ml-2 text-xs text-yellow-600">(Changed)</span>
-                          )}
-                        </div>
-                        <div className="grid grid-cols-2 gap-4 text-sm">
-                          <div>
-                            <div className="text-gray-500 mb-1">Before:</div>
-                            <div className="font-mono text-gray-900 break-words">
-                              {beforeValue === null || beforeValue === undefined
-                                ? '-'
-                                : typeof beforeValue === 'object'
-                                ? JSON.stringify(beforeValue, null, 2)
-                                : String(beforeValue)}
-                            </div>
+                {changedFields.length > 0 && !isDelete && !isCreate && (
+                  <div className="mb-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <p className="text-sm text-blue-800">
+                      <strong>{changedFields.length}</strong> field{changedFields.length !== 1 ? 's' : ''} changed: {changedFields.join(', ')}
+                    </p>
+                  </div>
+                )}
+
+                <div className="space-y-4">
+                  {Object.keys(before).length > 0 || Object.keys(after).length > 0 ? (
+                    // Get all unique keys from both before and after
+                    Array.from(new Set([...Object.keys(before), ...Object.keys(after)])).map((key) => {
+                      const beforeValue = before[key]
+                      const afterValue = after[key]
+                      const isChanged = changedFields.includes(key)
+                      const hasBefore = beforeValue !== undefined && beforeValue !== null
+                      const hasAfter = afterValue !== undefined && afterValue !== null
+
+                      return (
+                        <div
+                          key={key}
+                          className={`p-4 rounded-lg border ${
+                            isChanged
+                              ? 'bg-yellow-50 border-yellow-300'
+                              : isDelete
+                              ? 'bg-red-50 border-red-200'
+                              : isCreate
+                              ? 'bg-green-50 border-green-200'
+                              : 'bg-gray-50 border-gray-200'
+                          }`}
+                        >
+                          <div className="font-medium text-gray-700 mb-2">
+                            {key.replace(/_/g, ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                            {isChanged && !isDelete && !isCreate && (
+                              <span className="ml-2 text-xs text-yellow-600 font-medium">(Changed)</span>
+                            )}
+                            {isDelete && hasBefore && (
+                              <span className="ml-2 text-xs text-red-600 font-medium">(Deleted)</span>
+                            )}
+                            {isCreate && hasAfter && (
+                              <span className="ml-2 text-xs text-green-600 font-medium">(Created)</span>
+                            )}
                           </div>
-                          <div>
-                            <div className="text-gray-500 mb-1">After:</div>
-                            <div className="font-mono text-gray-900 break-words">
-                              {afterValue === null || afterValue === undefined
-                                ? '-'
-                                : typeof afterValue === 'object'
-                                ? JSON.stringify(afterValue, null, 2)
-                                : String(afterValue)}
-                            </div>
+                          <div className={`grid gap-4 text-sm ${isDelete || isCreate ? 'grid-cols-1' : 'grid-cols-2'}`}>
+                            {!isCreate && (
+                              <div>
+                                <div className="text-gray-500 mb-1 font-medium">Before:</div>
+                                <div className="font-mono text-gray-900 break-words bg-white p-2 rounded border">
+                                  {!hasBefore
+                                    ? <span className="text-gray-400 italic">(empty)</span>
+                                    : typeof beforeValue === 'object'
+                                    ? <pre className="text-xs overflow-auto">{JSON.stringify(beforeValue, null, 2)}</pre>
+                                    : String(beforeValue)}
+                                </div>
+                              </div>
+                            )}
+                            {!isDelete && (
+                              <div>
+                                <div className="text-gray-500 mb-1 font-medium">After:</div>
+                                <div className="font-mono text-gray-900 break-words bg-white p-2 rounded border">
+                                  {!hasAfter
+                                    ? <span className="text-gray-400 italic">(empty)</span>
+                                    : typeof afterValue === 'object'
+                                    ? <pre className="text-xs overflow-auto">{JSON.stringify(afterValue, null, 2)}</pre>
+                                    : String(afterValue)}
+                                </div>
+                              </div>
+                            )}
                           </div>
                         </div>
-                      </div>
-                    )
-                  })}
+                      )
+                    })
+                  ) : (
+                    <div className="p-4 bg-gray-50 border border-gray-200 rounded-lg text-center text-gray-500">
+                      No detailed changes available
+                    </div>
+                  )}
                 </div>
               </div>
             )}

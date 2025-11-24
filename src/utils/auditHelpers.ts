@@ -66,38 +66,68 @@ export function formatDiffJson(diffJson: Record<string, any> | null): {
   before: Record<string, any>
   after: Record<string, any>
   changedFields: string[]
+  isDelete: boolean
+  isCreate: boolean
 } {
   if (!diffJson || typeof diffJson !== 'object') {
-    return { before: {}, after: {}, changedFields: [] }
+    return { before: {}, after: {}, changedFields: [], isDelete: false, isCreate: false }
   }
 
   const before: Record<string, any> = {}
   const after: Record<string, any> = {}
   const changedFields: string[] = []
+  let isDelete = false
+  let isCreate = false
 
-  Object.keys(diffJson).forEach((key) => {
-    const value = diffJson[key]
+  // Handle database trigger format: {old: {...}, new: {...}} or {old: {...}} or {new: {...}}
+  if ('old' in diffJson || 'new' in diffJson) {
+    const oldData = diffJson.old || {}
+    const newData = diffJson.new || {}
+    
+    isDelete = !!diffJson.old && !diffJson.new
+    isCreate = !!diffJson.new && !diffJson.old
 
-    if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
-      // Handle { before: X, after: Y } format
-      if ('before' in value || 'after' in value) {
-        before[key] = value.before ?? null
-        after[key] = value.after ?? null
-        if (value.before !== value.after) {
-          changedFields.push(key)
+    // Get all unique keys from both old and new
+    const allKeys = new Set([...Object.keys(oldData), ...Object.keys(newData)])
+
+    allKeys.forEach((key) => {
+      const oldValue = oldData[key]
+      const newValue = newData[key]
+      
+      before[key] = oldValue !== undefined ? oldValue : null
+      after[key] = newValue !== undefined ? newValue : null
+      
+      // Check if value changed
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        changedFields.push(key)
+      }
+    })
+  } else {
+    // Handle application format: {field: {before: X, after: Y}}
+    Object.keys(diffJson).forEach((key) => {
+      const value = diffJson[key]
+
+      if (typeof value === 'object' && value !== null && !Array.isArray(value)) {
+        // Handle { before: X, after: Y } format
+        if ('before' in value || 'after' in value) {
+          before[key] = value.before ?? null
+          after[key] = value.after ?? null
+          if (JSON.stringify(value.before) !== JSON.stringify(value.after)) {
+            changedFields.push(key)
+          }
+        } else {
+          // Handle nested objects (treat as unchanged)
+          before[key] = value
+          after[key] = value
         }
       } else {
-        // Handle nested objects
+        // Handle simple values or arrays
         before[key] = value
         after[key] = value
       }
-    } else {
-      // Handle simple values or arrays
-      before[key] = value
-      after[key] = value
-    }
-  })
+    })
+  }
 
-  return { before, after, changedFields }
+  return { before, after, changedFields, isDelete, isCreate }
 }
 
