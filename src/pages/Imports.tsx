@@ -14,9 +14,18 @@ const validateRowsForPreview = (
   data.forEach((row, index) => {
     config.fields.forEach((field) => {
       const csvColumn = Object.keys(mapping).find((key) => mapping[key] === field.name)
-      const value = csvColumn ? row[csvColumn] : undefined
+      let value = csvColumn ? row[csvColumn] : undefined
+      
+      // Trim whitespace for string values
+      if (value !== undefined && typeof value === 'string') {
+        value = value.trim()
+      }
 
-      if (field.required && (!value || value === '')) {
+      // Treat common placeholder values as empty for optional fields
+      const placeholderValues = ['null', 'NULL', 'None', 'NONE', 'N/A', 'n/a', '-', '--', '']
+      const isEmptyValue = !value || value === '' || (typeof value === 'string' && placeholderValues.includes(value.trim()))
+
+      if (field.required && isEmptyValue) {
         errors.push({
           row: index + 1,
           field: field.name,
@@ -24,7 +33,9 @@ const validateRowsForPreview = (
         })
       }
 
-      if (value !== undefined && value !== '') {
+      // Validate types only if value is present and not empty (after trimming and checking placeholders)
+      // For optional fields, skip validation if empty
+      if (value !== undefined && !isEmptyValue) {
         switch (field.type) {
           case 'number':
             if (isNaN(Number(value))) {
@@ -47,12 +58,20 @@ const validateRowsForPreview = (
             break
           case 'uuid':
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-            if (!uuidRegex.test(String(value))) {
-              errors.push({
-                row: index + 1,
-                field: field.name,
-                message: `${field.label} must be a valid UUID`,
-              })
+            const uuidValue = String(value).trim()
+            // For optional UUID fields, if empty, placeholder, or invalid format, skip validation (treat as empty)
+            // Only validate if there's an actual non-empty UUID value that matches the format
+            if (uuidValue && uuidValue !== '' && !placeholderValues.includes(uuidValue)) {
+              // For optional fields, if it doesn't match UUID format, just skip it (don't error)
+              // Only error if it's a required field
+              if (!uuidRegex.test(uuidValue) && field.required) {
+                errors.push({
+                  row: index + 1,
+                  field: field.name,
+                  message: `${field.label} must be a valid UUID`,
+                })
+              }
+              // For optional fields with invalid UUID format, we'll skip it in transformRow
             }
             break
         }
@@ -179,13 +198,23 @@ export function Imports() {
       return
     }
 
+    if (!selectedTable) {
+      alert('Please select a target table first before uploading a CSV file')
+      return
+    }
+
     Papa.parse(file, {
       header: true,
       skipEmptyLines: true,
       complete: (results) => {
         if (results.data && results.data.length > 0) {
+          const headers = Object.keys(results.data[0] as Record<string, any>)
+          if (headers.length === 0) {
+            alert('CSV file has no headers. Please ensure your CSV file has a header row.')
+            return
+          }
           setCsvData(results.data as Record<string, any>[])
-          setCsvHeaders(Object.keys(results.data[0] as Record<string, any>))
+          setCsvHeaders(headers)
           setStep('mapping')
         } else {
           alert('CSV file is empty or invalid')
@@ -394,52 +423,80 @@ export function Imports() {
       )}
 
       {/* Step 2: Column Mapping */}
-      {step === 'mapping' && config && (
+      {step === 'mapping' && (
         <div className="space-y-6">
-          <div className="bg-white p-4 rounded-lg border border-gray-200">
-            <div className="flex items-center justify-between mb-4">
-              <h2 className="text-lg font-semibold text-text">Column Mapping</h2>
+          {!config ? (
+            <div className="bg-white p-6 rounded-lg border border-gray-200 text-center">
+              <p className="text-gray-600 mb-4">
+                Please select a target table first before uploading a CSV file.
+              </p>
               <button
-                onClick={handleReset}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                onClick={() => setStep('upload')}
+                className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
               >
-                Start Over
+                Go Back to Step 1
               </button>
             </div>
-            <p className="text-sm text-gray-600 mb-4">
-              Map CSV columns to database fields. Required fields are marked with *
-            </p>
-
-          <div className="space-y-4">
-            {csvHeaders.map((csvColumn) => (
-              <div key={csvColumn} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
-                <div className="font-medium text-gray-700">{csvColumn}</div>
-                <select
-                  value={mapping[csvColumn] || ''}
-                  onChange={(e) => handleMappingChange(csvColumn, e.target.value)}
-                  className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          ) : (
+            <div className="bg-white p-4 rounded-lg border border-gray-200">
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="text-lg font-semibold text-text">Column Mapping</h2>
+                <button
+                  onClick={handleReset}
+                  className="text-sm text-gray-600 hover:text-gray-900"
                 >
-                  <option value="">-- Select field --</option>
-                  {config.fields.map((field) => (
-                    <option key={field.name} value={field.name}>
-                      {field.label} {field.required && '*'}
-                      {field.description && ` (${field.description})`}
-                    </option>
-                  ))}
-                </select>
+                  Start Over
+                </button>
               </div>
-            ))}
-          </div>
+              <p className="text-sm text-gray-600 mb-4">
+                Map CSV columns to database fields. Required fields are marked with *
+              </p>
 
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <button
-              onClick={handlePreview}
-              className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
-            >
-              Preview Data
-            </button>
-          </div>
-          </div>
+              {csvHeaders.length === 0 ? (
+                <div className="text-center py-8 text-gray-500">
+                  <p>No CSV headers found. Please upload a valid CSV file.</p>
+                  <button
+                    onClick={() => setStep('upload')}
+                    className="mt-4 bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                  >
+                    Go Back to Step 1
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-4">
+                    {csvHeaders.map((csvColumn) => (
+                      <div key={csvColumn} className="grid grid-cols-1 md:grid-cols-2 gap-4 items-center">
+                        <div className="font-medium text-gray-700">{csvColumn}</div>
+                        <select
+                          value={mapping[csvColumn] || ''}
+                          onChange={(e) => handleMappingChange(csvColumn, e.target.value)}
+                          className="px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                        >
+                          <option value="">-- Select field --</option>
+                          {config.fields.map((field) => (
+                            <option key={field.name} value={field.name}>
+                              {field.label} {field.required && '*'}
+                              {field.description && ` (${field.description})`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ))}
+                  </div>
+
+                  <div className="mt-6 pt-6 border-t border-gray-200">
+                    <button
+                      onClick={handlePreview}
+                      className="bg-primary text-white px-6 py-2 rounded-lg hover:bg-primary/90 transition-colors font-medium"
+                    >
+                      Preview Data
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
         </div>
       )}
 

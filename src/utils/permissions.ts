@@ -60,6 +60,7 @@ export const PERMISSIONS = {
   CREATE_USER: 'create_user',
   EDIT_USER: 'edit_user',
   DELETE_USER: 'delete_user',
+  MANAGE_USERS: 'manage_users', // Combined permission for all user management
   MANAGE_ROLES: 'manage_roles',
   MANAGE_PERMISSIONS: 'manage_permissions',
 } as const
@@ -190,6 +191,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   [PERMISSIONS.CREATE_USER]: 'Create User',
   [PERMISSIONS.EDIT_USER]: 'Edit User',
   [PERMISSIONS.DELETE_USER]: 'Delete User',
+  [PERMISSIONS.MANAGE_USERS]: 'Manage Users',
   [PERMISSIONS.MANAGE_ROLES]: 'Manage Roles',
   [PERMISSIONS.MANAGE_PERMISSIONS]: 'Manage Permissions',
 }
@@ -256,6 +258,7 @@ export const PERMISSION_CATEGORIES = {
     PERMISSIONS.CREATE_USER,
     PERMISSIONS.EDIT_USER,
     PERMISSIONS.DELETE_USER,
+    PERMISSIONS.MANAGE_USERS,
     PERMISSIONS.MANAGE_ROLES,
     PERMISSIONS.MANAGE_PERMISSIONS,
   ],

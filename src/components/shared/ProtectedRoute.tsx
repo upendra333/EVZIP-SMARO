@@ -1,6 +1,7 @@
 import { Navigate } from 'react-router-dom'
 import { useOperator } from '../../hooks/useOperator'
 import type { Permission } from '../../utils/permissions'
+import { ROUTES } from '../../utils/constants'
 
 interface ProtectedRouteProps {
   children: React.ReactNode
@@ -8,8 +9,8 @@ interface ProtectedRouteProps {
   redirectTo?: string
 }
 
-export function ProtectedRoute({ children, permission, redirectTo = '/' }: ProtectedRouteProps) {
-  const { can, isLoading } = useOperator()
+export function ProtectedRoute({ children, permission, redirectTo = ROUTES.DASHBOARD }: ProtectedRouteProps) {
+  const { operator, can, isLoading } = useOperator()
 
   if (isLoading) {
     return (
@@ -19,6 +20,12 @@ export function ProtectedRoute({ children, permission, redirectTo = '/' }: Prote
     )
   }
 
+  // Redirect to login if not authenticated
+  if (!operator) {
+    return <Navigate to={ROUTES.LOGIN} replace />
+  }
+
+  // Check permission
   if (!can(permission)) {
     return <Navigate to={redirectTo} replace />
   }

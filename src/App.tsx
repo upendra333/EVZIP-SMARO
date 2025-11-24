@@ -1,4 +1,4 @@
-import { BrowserRouter, Routes, Route } from 'react-router-dom'
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { Reports } from './pages/Reports'
@@ -6,6 +6,8 @@ import { Imports } from './pages/Imports'
 import { Audit } from './pages/Audit'
 import { DataManagement } from './pages/DataManagement'
 import { RolePermissions } from './pages/RolePermissions'
+import { UserManagement } from './pages/UserManagement'
+import { Login } from './pages/Login'
 import { SupabaseError } from './components/shared/SupabaseError'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
 import { ROUTES } from './utils/constants'
@@ -20,8 +22,13 @@ function App() {
 
   return (
     <BrowserRouter>
-      <Layout>
-        <Routes>
+      <Routes>
+        <Route path={ROUTES.LOGIN} element={<Login />} />
+        <Route
+          path="*"
+          element={
+            <Layout>
+              <Routes>
           <Route 
             path={ROUTES.DASHBOARD} 
             element={
@@ -70,12 +77,24 @@ function App() {
               </ProtectedRoute>
             } 
           />
+          <Route 
+            path={ROUTES.USER_MANAGEMENT} 
+            element={
+              <ProtectedRoute permission={PERMISSIONS.MANAGE_USERS}>
+                <UserManagement />
+              </ProtectedRoute>
+            } 
+          />
           {/* Legacy routes - kept for backward compatibility but redirect to dashboard */}
           <Route path={ROUTES.SUBSCRIPTIONS} element={<Dashboard />} />
           <Route path={ROUTES.AIRPORT} element={<Dashboard />} />
           <Route path={ROUTES.RENTALS} element={<Dashboard />} />
-        </Routes>
-      </Layout>
+          <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
+              </Routes>
+            </Layout>
+          }
+        />
+      </Routes>
     </BrowserRouter>
   )
 }

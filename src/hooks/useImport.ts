@@ -27,10 +27,19 @@ export function useImport() {
 
     config.fields.forEach((field) => {
       const csvColumn = Object.keys(mapping).find((key) => mapping[key] === field.name)
-      const value = csvColumn ? row[csvColumn] : undefined
+      let value = csvColumn ? row[csvColumn] : undefined
+      
+      // Trim whitespace for string values
+      if (value !== undefined && typeof value === 'string') {
+        value = value.trim()
+      }
 
-      // Check required fields
-      if (field.required && (!value || value === '')) {
+      // Treat common placeholder values as empty for optional fields
+      const placeholderValues = ['null', 'NULL', 'None', 'NONE', 'N/A', 'n/a', '-', '--', '']
+      const isEmptyValue = !value || value === '' || (typeof value === 'string' && placeholderValues.includes(value.trim()))
+
+      // Check required fields (after trimming and checking placeholders)
+      if (field.required && isEmptyValue) {
         errors.push({
           row: rowIndex + 1,
           field: field.name,
@@ -38,8 +47,9 @@ export function useImport() {
         })
       }
 
-      // Validate types
-      if (value !== undefined && value !== '') {
+      // Validate types only if value is present and not empty (after trimming and checking placeholders)
+      // For optional fields, skip validation if empty
+      if (value !== undefined && !isEmptyValue) {
         switch (field.type) {
           case 'number':
             if (isNaN(Number(value))) {
@@ -62,12 +72,20 @@ export function useImport() {
             break
           case 'uuid':
             const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
-            if (!uuidRegex.test(String(value))) {
-              errors.push({
-                row: rowIndex + 1,
-                field: field.name,
-                message: `${field.label} must be a valid UUID`,
-              })
+            const uuidValue = String(value).trim()
+            // For optional UUID fields, if empty, placeholder, or invalid format, skip validation (treat as empty)
+            // Only validate if there's an actual non-empty UUID value that matches the format
+            if (uuidValue && uuidValue !== '' && !placeholderValues.includes(uuidValue)) {
+              // For optional fields, if it doesn't match UUID format, just skip it (don't error)
+              // Only error if it's a required field
+              if (!uuidRegex.test(uuidValue) && field.required) {
+                errors.push({
+                  row: rowIndex + 1,
+                  field: field.name,
+                  message: `${field.label} must be a valid UUID`,
+                })
+              }
+              // For optional fields with invalid UUID format, we'll skip it in transformRow
             }
             break
         }
@@ -86,8 +104,35 @@ export function useImport() {
 
     config.fields.forEach((field) => {
       const csvColumn = Object.keys(mapping).find((key) => mapping[key] === field.name)
-      if (csvColumn && row[csvColumn] !== undefined && row[csvColumn] !== '') {
+      if (csvColumn && row[csvColumn] !== undefined) {
         let value = row[csvColumn]
+        
+        // Trim whitespace for string values
+        if (typeof value === 'string') {
+          value = value.trim()
+        }
+        
+        // Treat common placeholder values as empty
+        const placeholderValues = ['null', 'NULL', 'None', 'NONE', 'N/A', 'n/a', '-', '--', '']
+        const isEmptyValue = !value || value === '' || value === null || value === undefined || 
+          (typeof value === 'string' && placeholderValues.includes(value.trim()))
+        
+        // For UUID fields, also check if the value is a valid UUID format
+        // If it's not a valid UUID and the field is optional, treat it as empty
+        if (field.type === 'uuid' && typeof value === 'string') {
+          const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+          const uuidValue = value.trim()
+          // If it's not a valid UUID and field is optional, skip it
+          if (uuidValue && !uuidRegex.test(uuidValue) && !field.required) {
+            return // Skip invalid UUID values for optional fields
+          }
+        }
+        
+        // Skip empty values (after trimming and checking placeholders) - don't include them in transformed object
+        // This allows optional fields to be omitted from the insert
+        if (isEmptyValue) {
+          return
+        }
 
         // Transform based on type
         switch (field.type) {
@@ -108,6 +153,10 @@ export function useImport() {
           case 'boolean':
             value = value === 'true' || value === '1' || value === 'yes'
             break
+          case 'uuid':
+            // UUIDs should already be strings, just trim
+            value = String(value).trim()
+            break
           default:
             value = String(value).trim()
         }
@@ -115,6 +164,14 @@ export function useImport() {
         transformed[field.name] = value
       }
     })
+
+    // Set default status values for drivers and vehicles if not provided
+    if (config.tableName === 'drivers' && !transformed.status) {
+      transformed.status = 'active'
+    }
+    if (config.tableName === 'vehicles' && !transformed.status) {
+      transformed.status = 'available'
+    }
 
     return transformed
   }

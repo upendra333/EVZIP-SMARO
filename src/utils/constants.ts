@@ -17,6 +17,8 @@ export const ROUTES = {
   AUDIT: '/audit',
   DATA_MANAGEMENT: '/data-management',
   ROLE_PERMISSIONS: '/role-permissions',
+  USER_MANAGEMENT: '/user-management',
+  LOGIN: '/login',
 } as const
 
 export const NAVIGATION_ITEMS = [
@@ -26,6 +28,7 @@ export const NAVIGATION_ITEMS = [
   { name: 'Imports', path: ROUTES.IMPORTS, icon: '📥', permission: PERMISSIONS.VIEW_IMPORTS },
   { name: 'Audit', path: ROUTES.AUDIT, icon: '📋', permission: PERMISSIONS.VIEW_AUDIT },
   { name: 'Role & Permissions', path: ROUTES.ROLE_PERMISSIONS, icon: '🔐', permission: PERMISSIONS.MANAGE_PERMISSIONS },
+  { name: 'User Management', path: ROUTES.USER_MANAGEMENT, icon: '👥', permission: PERMISSIONS.MANAGE_USERS },
 ] as const
 
 export const TRIP_STATUSES = {

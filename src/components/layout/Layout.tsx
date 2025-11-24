@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react'
+import { Navigate } from 'react-router-dom'
 import type { ReactNode } from 'react'
 import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { Footer } from './Footer'
-import { OperatorModal } from './OperatorModal'
 import { useOperator } from '../../hooks/useOperator'
+import { ROUTES } from '../../utils/constants'
 
 interface LayoutProps {
   children: ReactNode
@@ -12,22 +13,37 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { operator, isLoading, setOperator } = useOperator()
-  const [showOperatorModal, setShowOperatorModal] = useState(false)
+  const [checkingAuth, setCheckingAuth] = useState(true)
 
-  // Show operator modal if no operator is set
+  // Check localStorage and update operator if needed
   useEffect(() => {
-    if (!isLoading && !operator) {
-      setShowOperatorModal(true)
+    if (!isLoading) {
+      const currentUserJson = localStorage.getItem('currentUser')
+      if (currentUserJson && !operator) {
+        try {
+          const user = JSON.parse(currentUserJson)
+          setOperator(user.name, user.role)
+        } catch {
+          // Invalid user data
+        }
+      }
+      setCheckingAuth(false)
     }
-  }, [isLoading, operator])
+  }, [isLoading, operator, setOperator])
 
-  const handleSwitchOperator = () => {
-    setShowOperatorModal(true)
+  // Show loading while checking authentication
+  if (isLoading || checkingAuth) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-pulse text-gray-500">Loading...</div>
+      </div>
+    )
   }
 
-  const handleOperatorSet = (name: string, role: string) => {
-    setOperator(name, role as any)
-    setShowOperatorModal(false)
+  // Redirect to login if no operator is set (after loading)
+  // This must be after all hooks
+  if (!operator) {
+    return <Navigate to={ROUTES.LOGIN} replace />
   }
 
   return (
@@ -35,7 +51,7 @@ export function Layout({ children }: LayoutProps) {
       <Sidebar />
       
       <div className="flex-1 ml-64 flex flex-col min-h-screen">
-        <TopBar onSwitchOperator={handleSwitchOperator} />
+        <TopBar />
         
         <main className="flex-1 mt-16 p-6 overflow-y-auto">
           {children}
@@ -43,18 +59,6 @@ export function Layout({ children }: LayoutProps) {
         
         <Footer />
       </div>
-
-      {showOperatorModal && (
-        <OperatorModal
-          onClose={() => {
-            if (operator) {
-              setShowOperatorModal(false)
-            }
-          }}
-          onSetOperator={handleOperatorSet}
-          currentOperator={operator}
-        />
-      )}
     </div>
   )
 }

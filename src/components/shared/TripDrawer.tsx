@@ -3,8 +3,8 @@ import { Dialog } from '@headlessui/react'
 import { Drawer } from './Drawer'
 import { StatusBadge } from './StatusBadge'
 import { ManagerPasswordModal } from './ManagerPasswordModal'
-import { useDrivers } from '../../hooks/useDrivers'
-import { useVehicles } from '../../hooks/useVehicles'
+import { useAllDrivers } from '../../hooks/useAllDrivers'
+import { useAllVehicles } from '../../hooks/useAllVehicles'
 import { useTripStatus } from '../../hooks/useTripStatus'
 import { useManagerPassword } from '../../hooks/useManagerPassword'
 import { useAuditLog } from '../../hooks/useAuditLog'
@@ -50,9 +50,66 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     trip?.ref_id || ''
   )
 
-  // Get drivers and vehicles (filtered by hub if available)
-  const { data: drivers } = useDrivers()
-  const { data: vehicles } = useVehicles()
+  // Get all drivers and vehicles for assignment
+  const { data: allDrivers, isLoading: driversLoading, error: driversError } = useAllDrivers()
+  const { data: allVehicles, isLoading: vehiclesLoading, error: vehiclesError } = useAllVehicles()
+  
+  // Get the booking's hub_id to filter drivers and vehicles
+  const bookingHubId = tripDetails?.hub_id || null
+  
+  // Filter to show only active drivers and available vehicles from the booking's hub
+  // Handle various status formats (case-insensitive, trimmed, NULL/empty)
+  // Note: Vehicles may use "active" status instead of "available" (for imported data compatibility)
+  const drivers = (allDrivers || []).filter(driver => {
+    const status = driver.status ? String(driver.status).trim().toLowerCase() : ''
+    const isActive = status === 'active' || status === '' || driver.status === null
+    // Filter by hub: if booking has a hub, only show drivers from that hub (or drivers with no hub)
+    // If booking has no hub, show all active drivers
+    const matchesHub = !bookingHubId || driver.hub_id === bookingHubId || !driver.hub_id
+    return isActive && matchesHub
+  })
+  const vehicles = (allVehicles || []).filter(vehicle => {
+    const status = vehicle.status ? String(vehicle.status).trim().toLowerCase() : ''
+    // Accept both "available" (correct) and "active" (for imported data compatibility)
+    const isAvailable = status === 'available' || status === 'active' || status === '' || vehicle.status === null
+    // Filter by hub: if booking has a hub, only show vehicles from that hub (or vehicles with no hub)
+    // If booking has no hub, show all available vehicles
+    const matchesHub = !bookingHubId || vehicle.current_hub_id === bookingHubId || !vehicle.current_hub_id
+    return isAvailable && matchesHub
+  })
+  
+  // Debug: Log filtered results
+  useEffect(() => {
+    if (isOpen && allVehicles && allDrivers) {
+      console.log('=== ASSIGNMENT FILTERING DEBUG ===')
+      console.log('Booking Hub ID:', bookingHubId)
+      console.log('Total drivers:', allDrivers.length)
+      console.log('Total vehicles:', allVehicles.length)
+      console.log('Filtered drivers:', drivers.length)
+      console.log('Filtered vehicles:', vehicles.length)
+      if (bookingHubId) {
+        console.log(`Showing only drivers/vehicles from hub: ${bookingHubId}`)
+      } else {
+        console.log('No hub specified - showing all active drivers and available vehicles')
+      }
+    }
+  }, [isOpen, allVehicles, allDrivers, drivers, vehicles, bookingHubId])
+  
+  // Debug: Log data for troubleshooting
+  useEffect(() => {
+    if (isOpen && allDrivers && allVehicles) {
+      console.log('TripDrawer - All Drivers:', allDrivers.length)
+      console.log('TripDrawer - Driver statuses:', [...new Set(allDrivers.map(d => d.status))])
+      console.log('TripDrawer - Sample driver:', allDrivers[0])
+      console.log('TripDrawer - Active Drivers:', drivers.length)
+      console.log('TripDrawer - All Vehicles:', allVehicles.length)
+      console.log('TripDrawer - Vehicle statuses:', [...new Set(allVehicles.map(v => v.status))])
+      console.log('TripDrawer - Sample vehicle:', allVehicles[0])
+      console.log('TripDrawer - Available Vehicles:', vehicles.length)
+      if (driversError) console.error('Drivers error:', driversError)
+      if (vehiclesError) console.error('Vehicles error:', vehiclesError)
+    }
+  }, [isOpen, allDrivers, allVehicles, drivers, vehicles, driversError, vehiclesError])
 
   // Get audit log for timeline (only if trip exists)
   const { data: auditLog } = useAuditLog(trip?.id || '', 'trips')
@@ -554,14 +611,23 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                     setPendingDriverId(e.target.value)
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={driversLoading}
                 >
-                  <option value="">Select driver...</option>
-                  {drivers?.map((driver) => (
+                  <option value="">
+                    {driversLoading ? 'Loading drivers...' : drivers.length === 0 ? 'No drivers available' : 'Select driver...'}
+                  </option>
+                  {drivers.map((driver) => (
                     <option key={driver.id} value={driver.id}>
                       {driver.name} ({driver.phone})
                     </option>
                   ))}
                 </select>
+                {driversError && (
+                  <p className="mt-1 text-sm text-red-600">Error loading drivers: {driversError.message}</p>
+                )}
+                {!driversLoading && drivers.length === 0 && (
+                  <p className="mt-1 text-sm text-yellow-600">No drivers found. Please import drivers first.</p>
+                )}
                 {trip.driver_name && (
                   <p className="mt-1 text-sm text-gray-600">Current: {trip.driver_name}</p>
                 )}
@@ -577,14 +643,23 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                     setPendingVehicleId(e.target.value)
                   }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  disabled={vehiclesLoading}
                 >
-                  <option value="">Select vehicle...</option>
-                  {vehicles?.map((vehicle) => (
+                  <option value="">
+                    {vehiclesLoading ? 'Loading vehicles...' : vehicles.length === 0 ? 'No vehicles available' : 'Select vehicle...'}
+                  </option>
+                  {vehicles.map((vehicle) => (
                     <option key={vehicle.id} value={vehicle.id}>
                       {vehicle.reg_no} {vehicle.make && vehicle.model && `(${vehicle.make} ${vehicle.model})`}
                     </option>
                   ))}
                 </select>
+                {vehiclesError && (
+                  <p className="mt-1 text-sm text-red-600">Error loading vehicles: {vehiclesError.message}</p>
+                )}
+                {!vehiclesLoading && vehicles.length === 0 && (
+                  <p className="mt-1 text-sm text-yellow-600">No vehicles found. Please import vehicles first.</p>
+                )}
                 {trip.vehicle_reg && (
                   <p className="mt-1 text-sm text-gray-600">Current: {trip.vehicle_reg}</p>
                 )}

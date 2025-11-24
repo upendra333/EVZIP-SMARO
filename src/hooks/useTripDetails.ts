@@ -9,6 +9,7 @@ export interface TripDetails {
   status: string
   driver_id: string | null
   vehicle_id: string | null
+  hub_id: string | null
   notes: string | null
   fare: number | null
   pickup_at?: string | null // For airport and manual
@@ -34,7 +35,8 @@ export function useTripDetails(tripId: string, tripType: string, refId: string) 
       }
 
       // Select fields based on trip type
-      let selectFields = 'id, driver_id, vehicle_id, notes, status, fare'
+      // All booking types have hub_id
+      let selectFields = 'id, driver_id, vehicle_id, hub_id, notes, status, fare'
       if (tripType === TRIP_TYPES.AIRPORT || tripType === TRIP_TYPES.MANUAL) {
         selectFields += ', pickup_at'
       } else if (tripType === TRIP_TYPES.RENTAL) {
@@ -58,6 +60,7 @@ export function useTripDetails(tripId: string, tripType: string, refId: string) 
         status: tripData.status,
         driver_id: tripData.driver_id,
         vehicle_id: tripData.vehicle_id,
+        hub_id: tripData.hub_id || null,
         notes: tripData.notes,
         fare: tripData.fare,
         pickup_at: tripData.pickup_at || null,
