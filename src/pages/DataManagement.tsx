@@ -10,6 +10,9 @@ import { useCreateVehicle, useUpdateVehicle, useDeleteVehicle } from '../hooks/u
 import { useCreateHub, useUpdateHub, useDeleteHub } from '../hooks/useManageHubs'
 import { useOperator } from '../hooks/useOperator'
 import { PERMISSIONS, type Permission } from '../utils/permissions'
+import { useDeleteRide } from '../hooks/useDeleteRide'
+import { useNavigate } from 'react-router-dom'
+import { ROUTES } from '../utils/constants'
 
 type TabType = 'customers' | 'drivers' | 'vehicles' | 'hubs' | 'rides'
 
@@ -1440,6 +1443,28 @@ function AddHubForm({
 // Rides Tab
 function RidesTab() {
   const { data: bookings, isLoading } = useAllBookings()
+  const { can } = useOperator()
+  const deleteMutation = useDeleteRide()
+  const navigate = useNavigate()
+
+  const handleDelete = async (rideId: string, rideType: 'subscription' | 'airport' | 'rental' | 'manual') => {
+    if (!confirm('Are you sure you want to delete this ride? This action cannot be undone.')) return
+    try {
+      await deleteMutation.mutateAsync({ rideId, rideType })
+      alert('Ride deleted successfully')
+    } catch (error: any) {
+      alert(`Error: ${error.message}`)
+    }
+  }
+
+  const handleEdit = () => {
+    // Navigate to dashboard where user can click on the trip to edit
+    navigate(ROUTES.DASHBOARD)
+  }
+
+  const canEdit = can(PERMISSIONS.EDIT_RIDE)
+  const canDelete = can(PERMISSIONS.DELETE_RIDE)
+  const showActions = canEdit || canDelete
 
   return (
     <div>
@@ -1464,6 +1489,9 @@ function RidesTab() {
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Vehicle</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Fare</th>
+                  {showActions && (
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
@@ -1495,6 +1523,29 @@ function RidesTab() {
                     <td className="px-4 py-3 text-sm text-gray-900">
                       {booking.fare ? `₹${(booking.fare / 100).toFixed(2)}` : '-'}
                     </td>
+                    {showActions && (
+                      <td className="px-4 py-3 text-right text-sm">
+                        {canEdit && (
+                          <button
+                            onClick={handleEdit}
+                            className="text-primary hover:text-primary/80 mr-3"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(booking.ref_id, booking.type)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        )}
+                        {!canEdit && !canDelete && (
+                          <span className="text-gray-400 text-xs">No actions</span>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

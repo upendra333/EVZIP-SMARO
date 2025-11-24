@@ -45,6 +45,8 @@ export const PERMISSIONS = {
   DELETE_HUB: 'delete_hub',
   
   VIEW_RIDES: 'view_rides',
+  EDIT_RIDE: 'edit_ride',
+  DELETE_RIDE: 'delete_ride',
   
   // Imports
   VIEW_IMPORTS: 'view_imports',
@@ -179,6 +181,8 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   [PERMISSIONS.EDIT_HUB]: 'Edit Hub',
   [PERMISSIONS.DELETE_HUB]: 'Delete Hub',
   [PERMISSIONS.VIEW_RIDES]: 'View Rides',
+  [PERMISSIONS.EDIT_RIDE]: 'Edit Ride',
+  [PERMISSIONS.DELETE_RIDE]: 'Delete Ride',
   [PERMISSIONS.VIEW_IMPORTS]: 'View Imports',
   [PERMISSIONS.IMPORT_DATA]: 'Import Data',
   [PERMISSIONS.VIEW_AUDIT]: 'View Audit',
@@ -237,6 +241,8 @@ export const PERMISSION_CATEGORIES = {
   ],
   Rides: [
     PERMISSIONS.VIEW_RIDES,
+    PERMISSIONS.EDIT_RIDE,
+    PERMISSIONS.DELETE_RIDE,
   ],
   Imports: [
     PERMISSIONS.VIEW_IMPORTS,
