@@ -54,8 +54,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
   )
 
   // Get all drivers and vehicles for assignment
-  const { data: allDrivers, isLoading: driversLoading, error: driversError } = useAllDrivers()
-  const { data: allVehicles, isLoading: vehiclesLoading, error: vehiclesError } = useAllVehicles()
+  const { data: allDrivers, error: driversError } = useAllDrivers()
+  const { data: allVehicles, error: vehiclesError } = useAllVehicles()
   
   // Get the booking's hub_id to filter drivers and vehicles
   const bookingHubId = tripDetails?.hub_id || null

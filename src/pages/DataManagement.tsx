@@ -279,7 +279,6 @@ function SubscriptionsTab({
   const { data: subscriptions, isLoading } = useSubscriptions({ includeInactive: true })
   const { can } = useOperator()
   const { data: hubs } = useHubs()
-  const { data: customers } = useCustomers()
   const createMutation = useCreateSubscription()
   const updateMutation = useUpdateSubscription()
   const cancelMutation = useCancelSubscription()
@@ -324,7 +323,6 @@ function SubscriptionsTab({
             }}
             onCancel={onCloseAddModal}
             hubs={hubs || []}
-            customers={customers || []}
           />
         </div>
       )}
@@ -339,7 +337,6 @@ function SubscriptionsTab({
             }}
             onCancel={onCloseEdit}
             hubs={hubs || []}
-            customers={customers || []}
           />
         </div>
       )}
@@ -449,13 +446,11 @@ function EditSubscriptionForm({
   onSave,
   onCancel,
   hubs,
-  customers,
 }: {
   subscription: any
   onSave: (data: any) => Promise<void>
   onCancel: () => void
   hubs: any[]
-  customers: any[]
 }) {
   const [formData, setFormData] = useState({
     start_date: subscription.start_date || '',
@@ -619,12 +614,10 @@ function AddSubscriptionForm({
   onSave,
   onCancel,
   hubs,
-  customers,
 }: {
   onSave: (data: any) => Promise<void>
   onCancel: () => void
   hubs: any[]
-  customers: any[]
 }) {
   const [formData, setFormData] = useState({
     customer_name: '',
