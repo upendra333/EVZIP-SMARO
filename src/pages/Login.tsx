@@ -50,8 +50,15 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
       <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-text mb-2">EVZIP - SMARO</h1>
-          <p className="text-gray-600">Offline Booking Management Portal <br />Sign in to your account</p>
+          <div className="flex justify-center mb-2">
+            <img 
+              src="/evzip_logo.svg" 
+              alt="EVZIP" 
+              className="w-64 h-61"
+            />
+          </div>
+          <h1 className="text-3xl font-bold text-text mb-2">SMARO</h1>
+          <p className="text-gray-600">Smart Ride Operations<br /><br></br>Sign in to your account</p>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
@@ -106,6 +113,23 @@ export function Login() {
             {loginMutation.isPending ? 'Signing in...' : 'Sign In'}
           </button>
         </form>
+
+        <div className="mt-6 text-center space-y-2">
+          <p className="text-sm text-gray-600">
+            In case of any login issues please contact your Manager
+          </p>
+          <p className="text-xs">
+            Designed & Developed by{' '}
+            <a
+              href="https://www.ardnepu.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-primary hover:underline font-medium"
+            >
+              ardnepu
+            </a>
+          </p>
+        </div>
       </div>
     </div>
   )
