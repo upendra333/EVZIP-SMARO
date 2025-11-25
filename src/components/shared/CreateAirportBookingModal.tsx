@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Dialog } from '@headlessui/react'
 import { useCreateAirportBooking } from '../../hooks/useCreateBooking'
 import { useHubs } from '../../hooks/useHubs'
+import { CustomerNameAutocomplete } from './CustomerNameAutocomplete'
 
 interface CreateAirportBookingModalProps {
   isOpen: boolean
@@ -110,13 +111,17 @@ export function CreateAirportBookingModal({
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Customer Name <span className="text-red-500">*</span>
               </label>
-              <input
-                type="text"
+              <CustomerNameAutocomplete
                 value={formData.customer_name}
-                onChange={(e) => setFormData((prev) => ({ ...prev, customer_name: e.target.value }))}
-                required
+                onChange={(name, phone) => {
+                  setFormData((prev) => ({
+                    ...prev,
+                    customer_name: name,
+                    customer_phone: phone || prev.customer_phone,
+                  }))
+                }}
                 placeholder="Enter customer name"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                required
               />
             </div>
 

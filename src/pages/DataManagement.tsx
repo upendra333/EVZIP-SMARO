@@ -1,10 +1,13 @@
 import { useState, useEffect } from 'react'
 import { useCustomers } from '../hooks/useCustomers'
+import { useSubscriptions } from '../hooks/useSubscriptions'
 import { useAllDrivers } from '../hooks/useAllDrivers'
 import { useAllVehicles } from '../hooks/useAllVehicles'
 import { useHubs } from '../hooks/useHubs'
 import { useAllBookings } from '../hooks/useAllBookings'
 import { useCreateCustomer, useUpdateCustomer, useDeleteCustomer } from '../hooks/useManageCustomers'
+import { useCreateSubscription } from '../hooks/useCreateBooking'
+import { useUpdateSubscription, useCancelSubscription, useDeleteSubscription } from '../hooks/useManageSubscriptions'
 import { useCreateDriver, useUpdateDriver, useDeleteDriver } from '../hooks/useManageDrivers'
 import { useCreateVehicle, useUpdateVehicle, useDeleteVehicle } from '../hooks/useManageVehicles'
 import { useCreateHub, useUpdateHub, useDeleteHub } from '../hooks/useManageHubs'
@@ -13,8 +16,9 @@ import { PERMISSIONS, type Permission } from '../utils/permissions'
 import { useDeleteRide } from '../hooks/useDeleteRide'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../utils/constants'
+import { CustomerNameAutocomplete } from '../components/shared/CustomerNameAutocomplete'
 
-type TabType = 'customers' | 'drivers' | 'vehicles' | 'hubs' | 'rides'
+type TabType = 'customers' | 'subscriptions' | 'drivers' | 'vehicles' | 'hubs' | 'rides'
 
 export function DataManagement() {
   const { can } = useOperator()
@@ -28,6 +32,7 @@ export function DataManagement() {
   // Define tabs with their required permissions
   const availableTabs: Array<{ key: TabType; permission: Permission }> = [
     { key: 'customers', permission: PERMISSIONS.VIEW_CUSTOMERS },
+    { key: 'subscriptions', permission: PERMISSIONS.VIEW_SUBSCRIPTIONS },
     { key: 'drivers', permission: PERMISSIONS.VIEW_DRIVERS },
     { key: 'vehicles', permission: PERMISSIONS.VIEW_VEHICLES },
     { key: 'hubs', permission: PERMISSIONS.VIEW_HUBS },
@@ -48,7 +53,7 @@ export function DataManagement() {
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text">Data Management</h1>
-        <p className="text-gray-600 mt-1">Manage customers, drivers, vehicles, hubs, and rides</p>
+        <p className="text-gray-600 mt-1">Manage customers, subscriptions, drivers, vehicles, hubs, and rides</p>
       </div>
 
       {/* Tabs */}
@@ -75,6 +80,16 @@ export function DataManagement() {
       {/* Tab Content */}
       {activeTab === 'customers' && (
         <CustomersTab
+          onEdit={(id) => setEditingCustomer(id)}
+          editingId={editingCustomer}
+          onCloseEdit={() => setEditingCustomer(null)}
+          showAddModal={showAddModal}
+          onCloseAddModal={() => setShowAddModal(false)}
+          onOpenAddModal={() => setShowAddModal(true)}
+        />
+      )}
+      {activeTab === 'subscriptions' && (
+        <SubscriptionsTab
           onEdit={(id) => setEditingCustomer(id)}
           editingId={editingCustomer}
           onCloseEdit={() => setEditingCustomer(null)}
@@ -241,6 +256,573 @@ function CustomersTab({
           )}
         </div>
       )}
+    </div>
+  )
+}
+
+// Subscriptions Tab
+function SubscriptionsTab({
+  onEdit,
+  editingId,
+  onCloseEdit,
+  showAddModal,
+  onCloseAddModal,
+  onOpenAddModal,
+}: {
+  onEdit: (id: string) => void
+  editingId: string | null
+  onCloseEdit: () => void
+  showAddModal: boolean
+  onCloseAddModal: () => void
+  onOpenAddModal: () => void
+}) {
+  const { data: subscriptions, isLoading } = useSubscriptions({ includeInactive: true })
+  const { can } = useOperator()
+  const { data: hubs } = useHubs()
+  const { data: customers } = useCustomers()
+  const createMutation = useCreateSubscription()
+  const updateMutation = useUpdateSubscription()
+  const cancelMutation = useCancelSubscription()
+  const deleteMutation = useDeleteSubscription()
+
+  const editingSubscription = subscriptions?.find((s) => s.id === editingId)
+
+  const formatDate = (dateStr: string | null) => {
+    if (!dateStr) return '-'
+    try {
+      return new Date(dateStr).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })
+    } catch {
+      return dateStr
+    }
+  }
+
+  const formatCurrency = (paise: number | null) => {
+    if (paise === null) return '-'
+    return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
+  }
+
+  return (
+    <div>
+      <div className="mb-4 flex justify-between items-center">
+        <h2 className="text-lg font-semibold">Subscriptions</h2>
+        {can(PERMISSIONS.CREATE_SUBSCRIPTION) && (
+          <button
+            onClick={onOpenAddModal}
+            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Add Subscription
+          </button>
+        )}
+      </div>
+
+      {showAddModal && can(PERMISSIONS.CREATE_SUBSCRIPTION) && (
+        <div className="mb-6">
+          <AddSubscriptionForm
+            onSave={async (data) => {
+              await createMutation.mutateAsync(data)
+              onCloseAddModal()
+            }}
+            onCancel={onCloseAddModal}
+            hubs={hubs || []}
+            customers={customers || []}
+          />
+        </div>
+      )}
+
+      {editingSubscription && can(PERMISSIONS.EDIT_SUBSCRIPTION) && (
+        <div className="mb-6">
+          <EditSubscriptionForm
+            subscription={editingSubscription}
+            onSave={async (data) => {
+              await updateMutation.mutateAsync({ id: editingSubscription.id, ...data })
+              onCloseEdit()
+            }}
+            onCancel={onCloseEdit}
+            hubs={hubs || []}
+            customers={customers || []}
+          />
+        </div>
+      )}
+
+      {isLoading ? (
+        <div className="text-center py-8">Loading...</div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">End Date</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hub</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Amount</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  {(can(PERMISSIONS.EDIT_SUBSCRIPTION) || can(PERMISSIONS.DELETE_SUBSCRIPTION)) && (
+                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
+                  )}
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {subscriptions?.map((subscription) => (
+                  <tr key={subscription.id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {subscription.customer?.name || subscription.client_name || '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {subscription.pickup} → {subscription.drop}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{formatDate(subscription.start_date)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">{formatDate(subscription.end_date)}</td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {(subscription.hub as any)?.name || '-'}
+                    </td>
+                    <td className="px-4 py-3 text-sm text-gray-900">
+                      {formatCurrency(subscription.subscription_amount)}
+                    </td>
+                    <td className="px-4 py-3 text-sm">
+                      <span
+                        className={`px-2 py-1 rounded-full text-xs font-medium ${
+                          subscription.status === 'active'
+                            ? 'bg-green-100 text-green-800'
+                            : subscription.status === 'cancelled'
+                            ? 'bg-red-100 text-red-800'
+                            : 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {subscription.status}
+                      </span>
+                    </td>
+                    {(can(PERMISSIONS.EDIT_SUBSCRIPTION) || can(PERMISSIONS.DELETE_SUBSCRIPTION)) && (
+                      <td className="px-4 py-3 text-sm text-right space-x-2">
+                        {can(PERMISSIONS.EDIT_SUBSCRIPTION) && (
+                          <button
+                            onClick={() => onEdit(subscription.id)}
+                            className="text-primary hover:text-primary/80 font-medium"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {can(PERMISSIONS.DELETE_SUBSCRIPTION) && (
+                          <>
+                            <button
+                              onClick={async () => {
+                                if (confirm('Are you sure you want to cancel this subscription? This will mark it as cancelled but keep the record.')) {
+                                  await cancelMutation.mutateAsync(subscription.id)
+                                }
+                              }}
+                              className="text-orange-600 hover:text-orange-800 font-medium"
+                            >
+                              Cancel
+                            </button>
+                            <button
+                              onClick={async () => {
+                                if (confirm('⚠️ WARNING: This will permanently delete this subscription and all associated subscription rides. This action cannot be undone. Are you sure?')) {
+                                  await deleteMutation.mutateAsync(subscription.id)
+                                }
+                              }}
+                              className="text-red-600 hover:text-red-800 font-medium"
+                            >
+                              Delete
+                            </button>
+                          </>
+                        )}
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            {subscriptions?.length === 0 && (
+              <div className="text-center py-8 text-gray-500">No subscriptions found</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+function EditSubscriptionForm({
+  subscription,
+  onSave,
+  onCancel,
+  hubs,
+  customers,
+}: {
+  subscription: any
+  onSave: (data: any) => Promise<void>
+  onCancel: () => void
+  hubs: any[]
+  customers: any[]
+}) {
+  const [formData, setFormData] = useState({
+    start_date: subscription.start_date || '',
+    end_date: subscription.end_date || '',
+    pickup: subscription.pickup || '',
+    drop: subscription.drop || '',
+    distance_km: subscription.distance_km || '',
+    subscription_amount: subscription.subscription_amount ? subscription.subscription_amount / 100 : '',
+    pickup_time: subscription.pickup_time || '',
+    preferred_days: subscription.preferred_days || 'Mon-Sun',
+    hub_id: subscription.hub_id || '',
+    remarks: subscription.remarks || '',
+  })
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <h2 className="text-lg font-semibold mb-4">Edit Subscription</h2>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault()
+          await onSave({
+            ...formData,
+            subscription_amount: formData.subscription_amount ? parseFloat(formData.subscription_amount.toString()) * 100 : null,
+            distance_km: formData.distance_km ? parseFloat(formData.distance_km.toString()) : null,
+            hub_id: formData.hub_id || null,
+          })
+        }}
+        className="space-y-4"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+            <input
+              type="date"
+              required
+              value={formData.start_date}
+              onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input
+              type="date"
+              value={formData.end_date}
+              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Pickup *</label>
+          <input
+            type="text"
+            required
+            value={formData.pickup}
+            onChange={(e) => setFormData({ ...formData, pickup: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Drop *</label>
+          <input
+            type="text"
+            required
+            value={formData.drop}
+            onChange={(e) => setFormData({ ...formData, drop: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Distance (km)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.distance_km}
+              onChange={(e) => setFormData({ ...formData, distance_km: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.subscription_amount}
+              onChange={(e) => setFormData({ ...formData, subscription_amount: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Time</label>
+            <input
+              type="time"
+              value={formData.pickup_time}
+              onChange={(e) => setFormData({ ...formData, pickup_time: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Days</label>
+            <select
+              value={formData.preferred_days}
+              onChange={(e) => setFormData({ ...formData, preferred_days: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="Mon-Fri">Mon-Fri</option>
+              <option value="Mon-Sat">Mon-Sat</option>
+              <option value="Mon-Sun">Mon-Sun</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Hub</label>
+          <select
+            value={formData.hub_id}
+            onChange={(e) => setFormData({ ...formData, hub_id: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">Select Hub</option>
+            {hubs.map((hub) => (
+              <option key={hub.id} value={hub.id}>
+                {hub.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+          <textarea
+            value={formData.remarks}
+            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            rows={3}
+          />
+        </div>
+        <div className="flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Save
+          </button>
+        </div>
+      </form>
+    </div>
+  )
+}
+
+function AddSubscriptionForm({
+  onSave,
+  onCancel,
+  hubs,
+  customers,
+}: {
+  onSave: (data: any) => Promise<void>
+  onCancel: () => void
+  hubs: any[]
+  customers: any[]
+}) {
+  const [formData, setFormData] = useState({
+    customer_name: '',
+    customer_phone: '',
+    start_date: '',
+    end_date: '',
+    pickup: '',
+    drop: '',
+    distance_km: '',
+    subscription_amount: '',
+    pickup_time: '',
+    preferred_days: 'Mon-Sun' as 'Mon-Fri' | 'Mon-Sat' | 'Mon-Sun',
+    hub_id: '',
+    remarks: '',
+  })
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 p-6">
+      <h2 className="text-lg font-semibold mb-4">Add Subscription</h2>
+      <form
+        onSubmit={async (e) => {
+          e.preventDefault()
+          await onSave({
+            ...formData,
+            subscription_amount: formData.subscription_amount ? parseFloat(formData.subscription_amount.toString()) : undefined,
+            distance_km: formData.distance_km ? parseFloat(formData.distance_km.toString()) : undefined,
+            hub_id: formData.hub_id || undefined,
+            customer_phone: formData.customer_phone || undefined,
+          })
+          setFormData({
+            customer_name: '',
+            customer_phone: '',
+            start_date: '',
+            end_date: '',
+            pickup: '',
+            drop: '',
+            distance_km: '',
+            subscription_amount: '',
+            pickup_time: '',
+            preferred_days: 'Mon-Sun',
+            hub_id: '',
+            remarks: '',
+          })
+        }}
+        className="space-y-4"
+      >
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Customer Name *</label>
+            <CustomerNameAutocomplete
+              value={formData.customer_name}
+              onChange={(name, phone) => {
+                setFormData({
+                  ...formData,
+                  customer_name: name,
+                  customer_phone: phone || formData.customer_phone,
+                })
+              }}
+              placeholder="Enter customer name"
+              required
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Customer Phone</label>
+            <input
+              type="text"
+              value={formData.customer_phone}
+              onChange={(e) => setFormData({ ...formData, customer_phone: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Start Date *</label>
+            <input
+              type="date"
+              required
+              value={formData.start_date}
+              onChange={(e) => setFormData({ ...formData, start_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+            <input
+              type="date"
+              value={formData.end_date}
+              onChange={(e) => setFormData({ ...formData, end_date: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Pickup *</label>
+          <input
+            type="text"
+            required
+            value={formData.pickup}
+            onChange={(e) => setFormData({ ...formData, pickup: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Drop *</label>
+          <input
+            type="text"
+            required
+            value={formData.drop}
+            onChange={(e) => setFormData({ ...formData, drop: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Distance (km)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.distance_km}
+              onChange={(e) => setFormData({ ...formData, distance_km: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Amount (₹)</label>
+            <input
+              type="number"
+              step="0.01"
+              value={formData.subscription_amount}
+              onChange={(e) => setFormData({ ...formData, subscription_amount: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Pickup Time</label>
+            <input
+              type="time"
+              value={formData.pickup_time}
+              onChange={(e) => setFormData({ ...formData, pickup_time: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Preferred Days</label>
+            <select
+              value={formData.preferred_days}
+              onChange={(e) => setFormData({ ...formData, preferred_days: e.target.value as any })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="Mon-Fri">Mon-Fri</option>
+              <option value="Mon-Sat">Mon-Sat</option>
+              <option value="Mon-Sun">Mon-Sun</option>
+            </select>
+          </div>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Hub</label>
+          <select
+            value={formData.hub_id}
+            onChange={(e) => setFormData({ ...formData, hub_id: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+          >
+            <option value="">Select Hub</option>
+            {hubs.map((hub) => (
+              <option key={hub.id} value={hub.id}>
+                {hub.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Remarks</label>
+          <textarea
+            value={formData.remarks}
+            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            rows={3}
+          />
+        </div>
+        <div className="flex justify-end space-x-3">
+          <button
+            type="button"
+            onClick={onCancel}
+            className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+          >
+            Cancel
+          </button>
+          <button
+            type="submit"
+            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+          >
+            Add
+          </button>
+        </div>
+      </form>
     </div>
   )
 }

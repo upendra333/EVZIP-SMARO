@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import { useOperator } from './useOperator'
+import { playNotificationSound } from '../utils/notificationSound'
 
 // Helper function to get or create customer
 async function getOrCreateCustomer(name: string, phone?: string): Promise<string> {
@@ -101,6 +102,9 @@ export function useCreateSubscriptionRide() {
       return ride
     },
     onSuccess: async () => {
+      // Play notification sound
+      playNotificationSound()
+      
       queryClient.invalidateQueries({ queryKey: ['subscriptionRides'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' })
@@ -166,6 +170,9 @@ export function useCreateAirportBooking() {
       return booking
     },
     onSuccess: async () => {
+      // Play notification sound
+      playNotificationSound()
+      
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       queryClient.invalidateQueries({ queryKey: ['airportBookings'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
@@ -236,6 +243,9 @@ export function useCreateRentalBooking() {
       return booking
     },
     onSuccess: async () => {
+      // Play notification sound
+      playNotificationSound()
+      
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       queryClient.invalidateQueries({ queryKey: ['rentalBookings'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
@@ -300,6 +310,9 @@ export function useCreateManualRide() {
       return ride
     },
     onSuccess: async () => {
+      // Play notification sound
+      playNotificationSound()
+      
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       queryClient.invalidateQueries({ queryKey: ['manualRides'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
@@ -395,6 +408,9 @@ export function useCreateSubscription() {
       return subscription
     },
     onSuccess: async () => {
+      // Play notification sound
+      playNotificationSound()
+      
       queryClient.invalidateQueries({ queryKey: ['customers'] })
       queryClient.invalidateQueries({ queryKey: ['subscriptions'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['subscriptionRides'], refetchType: 'active' })

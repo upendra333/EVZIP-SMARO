@@ -5,12 +5,14 @@ import { StatusBadge } from './StatusBadge'
 import { ManagerPasswordModal } from './ManagerPasswordModal'
 import { useAllDrivers } from '../../hooks/useAllDrivers'
 import { useAllVehicles } from '../../hooks/useAllVehicles'
+import { DriverAutocomplete } from './DriverAutocomplete'
+import { VehicleAutocomplete } from './VehicleAutocomplete'
 import { useTripStatus } from '../../hooks/useTripStatus'
 import { useManagerPassword } from '../../hooks/useManagerPassword'
 import { useAuditLog } from '../../hooks/useAuditLog'
 import { useTripDetails } from '../../hooks/useTripDetails'
 import { useOperator } from '../../hooks/useOperator'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { TripListItem } from '../../hooks/useTodayTrips'
 import { TRIP_TYPES } from '../../utils/constants'
@@ -29,6 +31,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
 
   const [selectedStatus, setSelectedStatus] = useState<string>('')
   const [cancelReason, setCancelReason] = useState('')
+  const [carryForward, setCarryForward] = useState(false)
   const [showStatusModal, setShowStatusModal] = useState(false)
   const [showManagerModal, setShowManagerModal] = useState(false)
   const [pendingAction, setPendingAction] = useState<(() => void) | null>(null)
@@ -114,6 +117,36 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
   // Get audit log for timeline (only if trip exists)
   const { data: auditLog } = useAuditLog(trip?.id || '', 'trips')
 
+  // Get carried forward rides for this subscription (only for subscription trips)
+  const { data: carriedForwardRides } = useQuery({
+    queryKey: ['carriedForwardRides', tripDetails?.subscription_id],
+    queryFn: async () => {
+      if (!tripDetails?.subscription_id || trip?.type !== TRIP_TYPES.SUBSCRIPTION) {
+        return []
+      }
+
+      const { data, error } = await supabase
+        .from('subscription_rides')
+        .select(`
+          id,
+          date,
+          direction,
+          status,
+          notes,
+          trips(id, status)
+        `)
+        .eq('subscription_id', tripDetails.subscription_id)
+        .eq('carried_forward', true)
+        .in('status', ['created', 'assigned'])
+        .is('deleted_at', null)
+        .order('date', { ascending: true })
+
+      if (error) throw error
+      return data || []
+    },
+    enabled: !!tripDetails?.subscription_id && trip?.type === TRIP_TYPES.SUBSCRIPTION,
+  })
+
   // Helper function to convert ISO string to datetime-local format
   const isoToDatetimeLocal = (isoString: string | null): string => {
     if (!isoString) return ''
@@ -147,6 +180,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       setPendingEndAt(isoToDatetimeLocal(currentEndAt))
       setSelectedStatus('')
       setCancelReason('')
+      setCarryForward(false)
       setHasPendingChanges(false)
     }
   }, [trip?.id, currentDriverId, currentVehicleId, currentNotes, currentFare, currentPickupAt, currentStartAt, currentEndAt])
@@ -459,9 +493,11 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
           tripId: trip.id,
           newStatus: selectedStatus,
           cancelReason: cancelReason || undefined,
+          carryForward: trip.type === TRIP_TYPES.SUBSCRIPTION && selectedStatus === 'cancelled' ? carryForward : undefined,
         })
         setSelectedStatus('')
         setCancelReason('')
+        setCarryForward(false)
       }
 
       // Reset pending changes
@@ -478,6 +514,9 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       onClose()
     } catch (error) {
       console.error('Error submitting changes:', error)
+      // Show user-friendly error message
+      const errorMessage = error instanceof Error ? error.message : 'An error occurred while submitting changes'
+      alert(`Error: ${errorMessage}`)
     }
   }
 
@@ -517,6 +556,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
           onClose()
           clearAuthentication()
           setCancelReason('')
+          setCarryForward(false)
           setShowStatusModal(false)
           // Reset pending changes when drawer closes - values will be reset by useEffect when trip changes
         }}
@@ -605,28 +645,17 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Driver
                 </label>
-                <select
+                <DriverAutocomplete
                   value={pendingDriverId}
-                  onChange={(e) => {
-                    setPendingDriverId(e.target.value)
+                  onChange={(driverId) => {
+                    setPendingDriverId(driverId)
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  disabled={driversLoading}
-                >
-                  <option value="">
-                    {driversLoading ? 'Loading drivers...' : drivers.length === 0 ? 'No drivers available' : 'Select driver...'}
-                  </option>
-                  {drivers.map((driver) => (
-                    <option key={driver.id} value={driver.id}>
-                      {driver.name} ({driver.phone})
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Type to search driver..."
+                  activeOnly={true}
+                  hubId={bookingHubId}
+                />
                 {driversError && (
                   <p className="mt-1 text-sm text-red-600">Error loading drivers: {driversError.message}</p>
-                )}
-                {!driversLoading && drivers.length === 0 && (
-                  <p className="mt-1 text-sm text-yellow-600">No drivers found. Please import drivers first.</p>
                 )}
                 {trip.driver_name && (
                   <p className="mt-1 text-sm text-gray-600">Current: {trip.driver_name}</p>
@@ -637,28 +666,17 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Vehicle
                 </label>
-                <select
+                <VehicleAutocomplete
                   value={pendingVehicleId}
-                  onChange={(e) => {
-                    setPendingVehicleId(e.target.value)
+                  onChange={(vehicleId) => {
+                    setPendingVehicleId(vehicleId)
                   }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-                  disabled={vehiclesLoading}
-                >
-                  <option value="">
-                    {vehiclesLoading ? 'Loading vehicles...' : vehicles.length === 0 ? 'No vehicles available' : 'Select vehicle...'}
-                  </option>
-                  {vehicles.map((vehicle) => (
-                    <option key={vehicle.id} value={vehicle.id}>
-                      {vehicle.reg_no} {vehicle.make && vehicle.model && `(${vehicle.make} ${vehicle.model})`}
-                    </option>
-                  ))}
-                </select>
+                  placeholder="Type to search vehicle..."
+                  availableOnly={true}
+                  hubId={bookingHubId}
+                />
                 {vehiclesError && (
                   <p className="mt-1 text-sm text-red-600">Error loading vehicles: {vehiclesError.message}</p>
-                )}
-                {!vehiclesLoading && vehicles.length === 0 && (
-                  <p className="mt-1 text-sm text-yellow-600">No vehicles found. Please import vehicles first.</p>
                 )}
                 {trip.vehicle_reg && (
                   <p className="mt-1 text-sm text-gray-600">Current: {trip.vehicle_reg}</p>
@@ -746,6 +764,55 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
             />
           </div>
 
+          {/* Carried Forward Rides - Only for subscription trips */}
+          {trip?.type === TRIP_TYPES.SUBSCRIPTION && carriedForwardRides && carriedForwardRides.length > 0 && (
+            <div className="border-t border-gray-200 pt-6">
+              <h3 className="text-lg font-semibold text-text mb-4">Carried Forward Rides</h3>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-4">
+                <p className="text-sm text-blue-800">
+                  These rides were carried forward from cancelled rides and are available for use.
+                </p>
+              </div>
+              <div className="space-y-3">
+                {carriedForwardRides.map((ride: any) => (
+                  <div
+                    key={ride.id}
+                    className="flex items-center justify-between p-3 bg-gray-50 border border-gray-200 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-sm font-medium text-text">
+                          {formatTime(ride.date ? `${ride.date}T09:00:00` : null)}
+                        </span>
+                        <StatusBadge status={ride.status} size="sm" />
+                        <span className="text-xs text-gray-500">
+                          {ride.direction === 'to_office' ? 'To Office' : 'From Office'}
+                        </span>
+                      </div>
+                      {ride.notes && (
+                        <p className="text-xs text-gray-600 mt-1 line-clamp-2">{ride.notes}</p>
+                      )}
+                    </div>
+                    {ride.trips && Array.isArray(ride.trips) && ride.trips.length > 0 && ride.trips[0]?.id && (
+                      <button
+                        onClick={() => {
+                          // Close current drawer and open the carried forward ride
+                          onClose()
+                          // Note: This would need to be handled by parent component
+                          // For now, we'll just show the trip ID
+                          console.log('Open carried forward trip:', ride.trips[0].id)
+                        }}
+                        className="ml-4 px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+                      >
+                        View Trip
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Timeline */}
           {auditLog && auditLog.length > 0 && (
             <div className="border-t border-gray-200 pt-6">
@@ -769,6 +836,11 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                       {entry.diff_json?.old_status && entry.diff_json?.new_status && (
                         <p className="text-xs text-gray-600 mt-1">
                           Status: {entry.diff_json.old_status} → {entry.diff_json.new_status}
+                        </p>
+                      )}
+                      {entry.diff_json?.carry_forward && (
+                        <p className="text-xs text-blue-600 mt-1">
+                          ✓ Ride was carried forward
                         </p>
                       )}
                     </div>
@@ -796,23 +868,74 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                   placeholder="Enter cancellation reason..."
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-[100px]"
                 />
+                {/* Carry Forward Option - Only for subscription rides */}
+                {trip?.type === TRIP_TYPES.SUBSCRIPTION && selectedStatus === 'cancelled' && (
+                  <div className="flex items-start gap-3 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+                    <input
+                      type="checkbox"
+                      id="carryForward"
+                      checked={carryForward}
+                      onChange={(e) => setCarryForward(e.target.checked)}
+                      className="mt-1 h-4 w-4 text-primary focus:ring-primary border-gray-300 rounded"
+                    />
+                    <label htmlFor="carryForward" className="flex-1 text-sm text-gray-700 cursor-pointer">
+                      <span className="font-medium">Carry Forward This Ride</span>
+                      <p className="text-xs text-gray-600 mt-1">
+                        This ride will be available in the trip drawer for later use. Useful for subscriptions charged by total trips.
+                      </p>
+                    </label>
+                  </div>
+                )}
                 <div className="flex gap-3">
                   <button
-                    onClick={() => {
+                    onClick={async () => {
+                      if (!cancelReason.trim()) return
                       setShowStatusModal(false)
-                      // Cancel reason is stored, will be submitted with other changes
+                      // Automatically submit the cancellation with carry forward option
+                      try {
+                        await advanceStatus.mutateAsync({
+                          tripId: trip!.id,
+                          newStatus: selectedStatus,
+                          cancelReason: cancelReason || undefined,
+                          carryForward: trip!.type === TRIP_TYPES.SUBSCRIPTION && selectedStatus === 'cancelled' ? carryForward : undefined,
+                        })
+                        setSelectedStatus('')
+                        setCancelReason('')
+                        setCarryForward(false)
+                        setHasPendingChanges(false)
+                        onClose()
+                      } catch (error: any) {
+                        console.error('Error cancelling trip:', error)
+                        const errorMessage = error?.message || error?.error?.message || 'Failed to cancel trip. Please try again.'
+                        alert(`Error: ${errorMessage}`)
+                        // Re-open modal so user can try again
+                        setShowStatusModal(true)
+                      }
                     }}
-                    disabled={!cancelReason.trim()}
-                    className="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50"
+                    disabled={!cancelReason.trim() || advanceStatus.isPending}
+                    className="flex-1 bg-primary text-white py-2 px-4 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
                   >
-                    Save Reason
+                    {advanceStatus.isPending ? (
+                      <>
+                        <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                          <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                        </svg>
+                        Cancelling...
+                      </>
+                    ) : (
+                      'Cancel Trip'
+                    )}
                   </button>
                   <button
                     onClick={() => {
                       setShowStatusModal(false)
                       setCancelReason('')
+                      setCarryForward(false)
+                      setSelectedStatus('')
                     }}
-                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                    disabled={advanceStatus.isPending}
+                    className="px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors disabled:opacity-50"
                   >
                     Cancel
                   </button>

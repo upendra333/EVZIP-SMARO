@@ -83,10 +83,12 @@ export function useTripStatus() {
       tripId,
       newStatus,
       cancelReason,
+      carryForward,
     }: {
       tripId: string
       newStatus: string
       cancelReason?: string
+      carryForward?: boolean
     }) => {
       const { data, error } = await supabase.rpc('advance_trip_status', {
         p_trip_id: tripId,
@@ -94,6 +96,7 @@ export function useTripStatus() {
         p_actor_id: null, // Will be set from operator context
         p_actor_name: operator?.name || 'Unknown',
         p_cancel_reason: cancelReason || null,
+        p_carry_forward: carryForward || false,
       })
 
       if (error) throw error

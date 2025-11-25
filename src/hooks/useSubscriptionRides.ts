@@ -13,6 +13,8 @@ export interface SubscriptionRide {
   fare: number | null
   status: string
   notes: string | null
+  carried_forward?: boolean
+  carried_forward_from_ride_id?: string | null
   subscription: {
     id: string
     customer_id: string
@@ -76,6 +78,8 @@ export function useSubscriptionRides(filters?: {
           fare,
           status,
           notes,
+          carried_forward,
+          carried_forward_from_ride_id,
           subscriptions!inner(
             id,
             customer_id,

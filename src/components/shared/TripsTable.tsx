@@ -13,8 +13,8 @@ type SortColumn = 'created_at' | 'start_time' | 'type' | 'hub_name' | 'route' | 
 type SortDirection = 'asc' | 'desc'
 
 export function TripsTable({ trips, onRowClick, isLoading }: TripsTableProps) {
-  const [sortColumn, setSortColumn] = useState<SortColumn>('created_at')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [sortColumn, setSortColumn] = useState<SortColumn>('start_time')
+  const [sortDirection, setSortDirection] = useState<SortDirection>('asc')
   const formatTime = (timeStr: string | null) => {
     if (!timeStr) return '-'
     try {

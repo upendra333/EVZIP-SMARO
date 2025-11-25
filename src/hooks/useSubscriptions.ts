@@ -27,17 +27,30 @@ export interface Subscription {
   customer?: {
     name: string
   }
+  hub?: {
+    id: string
+    name: string
+  }
 }
 
-export function useSubscriptions() {
+export function useSubscriptions(filters?: { status?: string; includeInactive?: boolean }) {
   return useQuery({
-    queryKey: ['subscriptions'],
+    queryKey: ['subscriptions', filters],
     queryFn: async () => {
-      const { data, error } = await supabase
+      let query = supabase
         .from('subscriptions')
-        .select('*, customer:customers(name)')
-        .eq('status', 'active')
+        .select('*, customer:customers(name), hub:hubs(id, name)')
         .order('start_date', { ascending: false })
+
+      // Apply status filter if provided, or show all if includeInactive is true
+      if (filters?.status) {
+        query = query.eq('status', filters.status)
+      } else if (!filters?.includeInactive) {
+        // Default: show only active subscriptions
+        query = query.eq('status', 'active')
+      }
+
+      const { data, error } = await query
 
       if (error) throw error
       return (data || []) as Subscription[]

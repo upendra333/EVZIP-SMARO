@@ -3,6 +3,7 @@ import { useOperator } from '../../hooks/useOperator'
 import { useLogout } from '../../hooks/useAuth'
 import { ROLES } from '../../utils/constants'
 import { ROUTES } from '../../utils/constants'
+import { NotificationSoundSelector } from '../shared/NotificationSoundSelector'
 
 export function TopBar() {
   const { operator, clearOperator } = useOperator()
@@ -41,6 +42,7 @@ export function TopBar() {
       <div className="flex items-center gap-4">
         {operator && (
           <>
+            <NotificationSoundSelector />
             <div className="text-right">
               <div className="text-sm font-medium text-text">{operator.name}</div>
               <div className="text-xs text-gray-500">{getRoleDisplay(operator.role)}</div>

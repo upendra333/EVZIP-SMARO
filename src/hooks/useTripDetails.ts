@@ -15,6 +15,7 @@ export interface TripDetails {
   pickup_at?: string | null // For airport and manual
   start_at?: string | null // For rental
   end_at?: string | null // For rental
+  subscription_id?: string | null // For subscription rides
 }
 
 export function useTripDetails(tripId: string, tripType: string, refId: string) {
@@ -37,7 +38,9 @@ export function useTripDetails(tripId: string, tripType: string, refId: string) 
       // Select fields based on trip type
       // All booking types have hub_id
       let selectFields = 'id, driver_id, vehicle_id, hub_id, notes, status, fare'
-      if (tripType === TRIP_TYPES.AIRPORT || tripType === TRIP_TYPES.MANUAL) {
+      if (tripType === TRIP_TYPES.SUBSCRIPTION) {
+        selectFields += ', subscription_id'
+      } else if (tripType === TRIP_TYPES.AIRPORT || tripType === TRIP_TYPES.MANUAL) {
         selectFields += ', pickup_at'
       } else if (tripType === TRIP_TYPES.RENTAL) {
         selectFields += ', start_at, end_at'
@@ -66,6 +69,7 @@ export function useTripDetails(tripId: string, tripType: string, refId: string) 
         pickup_at: tripData.pickup_at || null,
         start_at: tripData.start_at || null,
         end_at: tripData.end_at || null,
+        subscription_id: tripData.subscription_id || null,
       } as TripDetails
     },
     enabled: !!tripId && !!tripType && !!refId,
