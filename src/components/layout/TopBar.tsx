@@ -80,7 +80,7 @@ export function TopBar() {
             )}
           </svg>
         </button>
-        <span className="text-lg font-semibold text-text">Offline Bookings Management System</span>
+        <span className="text-lg font-semibold text-text">SMARO - Smart Rides Operations</span>
       </div>
 
       <div className="flex items-center gap-4">
