@@ -1,10 +1,19 @@
 import { Link, useLocation } from 'react-router-dom'
 import { NAVIGATION_ITEMS } from '../../utils/constants'
 import { useOperator } from '../../hooks/useOperator'
+import { useSidebar } from '../../hooks/useSidebar'
 
 export function Sidebar() {
   const location = useLocation()
   const { can } = useOperator()
+  const { isVisible, hide } = useSidebar()
+
+  // Close sidebar on mobile when a link is clicked
+  const handleLinkClick = () => {
+    if (window.innerWidth < 1024) {
+      hide()
+    }
+  }
 
   // Filter navigation items based on permissions
   const visibleItems = NAVIGATION_ITEMS.filter((item) => {
@@ -13,7 +22,22 @@ export function Sidebar() {
   })
 
   return (
-    <aside className="w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-10">
+    <>
+      {/* Overlay for mobile when sidebar is visible */}
+      {isVisible && (
+        <div
+          className="fixed inset-0 bg-black/50 z-30 lg:hidden"
+          onClick={hide}
+        />
+      )}
+      
+      <aside
+        className={`
+          w-64 bg-white border-r border-gray-200 flex flex-col h-screen fixed left-0 top-0 z-40
+          transition-transform duration-300 ease-in-out
+          ${isVisible ? 'translate-x-0' : '-translate-x-full'}
+        `}
+      >
       <div className="p-6 border-b border-gray-200">
         <div className="flex justify-center mb-2">
           <img 
@@ -33,6 +57,7 @@ export function Sidebar() {
               <li key={item.path}>
                 <Link
                   to={item.path}
+                  onClick={handleLinkClick}
                   className={`
                     flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
                     ${isActive 
@@ -50,6 +75,7 @@ export function Sidebar() {
         </ul>
       </nav>
     </aside>
+    </>
   )
 }
 

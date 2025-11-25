@@ -57,6 +57,8 @@ export function useAllBookings(filters?: {
                 date,
                 direction,
                 fare,
+                est_km,
+                actual_km,
                 drivers(name),
                 vehicles(reg_no),
                 subscriptions(
@@ -64,7 +66,8 @@ export function useAllBookings(filters?: {
                   pickup,
                   drop,
                   hub_id,
-                  hubs(name)
+                  hubs(name),
+                  distance_km
                 )
               `)
               .in('id', subscriptionTripIds)
@@ -77,6 +80,8 @@ export function useAllBookings(filters?: {
                 id,
                 pickup_at,
                 fare,
+                est_km,
+                actual_km,
                 drivers(name),
                 vehicles(reg_no),
                 customers(name),
@@ -95,6 +100,8 @@ export function useAllBookings(filters?: {
                 id,
                 start_at,
                 fare,
+                est_km,
+                actual_km,
                 drivers(name),
                 vehicles(reg_no),
                 customers(name),
@@ -111,6 +118,8 @@ export function useAllBookings(filters?: {
                 id,
                 pickup_at,
                 fare,
+                est_km,
+                actual_km,
                 pickup,
                 drop,
                 drivers(name),
@@ -165,6 +174,8 @@ export function useAllBookings(filters?: {
               status: trip.status,
               fare: sr.fare,
               ref_id: trip.ref_id,
+              est_km: sr.est_km || sr.subscriptions?.distance_km || null,
+              actual_km: sr.actual_km || null,
             }
           }
         } else if (trip.type === 'airport') {
@@ -186,6 +197,8 @@ export function useAllBookings(filters?: {
               status: trip.status,
               fare: ab.fare,
               ref_id: trip.ref_id,
+              est_km: ab.est_km || null,
+              actual_km: ab.actual_km || null,
             }
           }
         } else if (trip.type === 'rental') {
@@ -206,6 +219,8 @@ export function useAllBookings(filters?: {
               status: trip.status,
               fare: rb.fare,
               ref_id: trip.ref_id,
+              est_km: rb.est_km || null,
+              actual_km: rb.actual_km || null,
             }
           }
         } else if (trip.type === 'manual') {
@@ -227,6 +242,8 @@ export function useAllBookings(filters?: {
               status: trip.status,
               fare: mr.fare,
               ref_id: trip.ref_id,
+              est_km: mr.est_km || null,
+              actual_km: mr.actual_km || null,
             }
           }
         }
@@ -245,6 +262,8 @@ export function useAllBookings(filters?: {
           status: trip.status,
           fare: null,
           ref_id: trip.ref_id,
+          est_km: null,
+          actual_km: null,
         }
       })
 
@@ -284,7 +303,8 @@ export function useAllBookings(filters?: {
 
       return filteredTrips
     },
-    refetchInterval: 30000, // Refetch every 30 seconds
+    refetchInterval: 10000, // Refetch every 10 seconds for real-time updates
+    refetchOnWindowFocus: true, // Refetch when window regains focus
   })
 }
 

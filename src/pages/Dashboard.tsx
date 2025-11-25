@@ -22,7 +22,12 @@ export function Dashboard() {
   const [createModalType, setCreateModalType] = useState<'airport' | 'subscription_booking' | 'rental' | 'manual' | null>(null)
 
   const { can } = useOperator()
-  const { data: metrics, isLoading: metricsLoading, error: metricsError } = useTodayMetrics()
+  const { error: metricsError } = useTodayMetrics() // Keep for error display
+  
+  // Fetch all bookings for stats calculation (no filters)
+  const { data: allBookingsForStats } = useAllBookings({})
+  
+  // Fetch filtered bookings for table display
   const { data: bookings, isLoading: bookingsLoading } = useAllBookings({
     type: filters.type,
     status: filters.status,
@@ -80,10 +85,24 @@ export function Dashboard() {
     return `${year}-${month}-${day}`
   }
 
-  // Calculate "Due Next 60 Min" and "Due Today" from bookings data
-  const calculatedMetrics = useMemo(() => {
-    if (!bookings || bookings.length === 0) {
-      return { dueNext60Min: 0, dueToday: 0 }
+  // Calculate all dashboard stats from all bookings data (unfiltered)
+  const dashboardStats = useMemo(() => {
+    const bookingsForStats = allBookingsForStats || []
+    if (!bookingsForStats || bookingsForStats.length === 0) {
+      return {
+        // Today Overview
+        totalRidesToday: 0,
+        totalKmToday: 0,
+        totalRevenueToday: 0,
+        // Bookings Overview
+        dueNext60Min: 0,
+        dueToday: 0,
+        dueTomorrow: 0,
+        // Status Overview
+        active: 0,
+        yetToAssign: 0,
+        cancelledNoShow: 0,
+      }
     }
 
     const now = new Date()
@@ -96,34 +115,83 @@ export function Dashboard() {
     const todayEnd = new Date(today)
     todayEnd.setHours(23, 59, 59, 999)
 
+    // Get tomorrow's start and end times
+    const tomorrow = new Date(today)
+    tomorrow.setDate(tomorrow.getDate() + 1)
+    const tomorrowStart = new Date(tomorrow)
+    const tomorrowEnd = new Date(tomorrow)
+    tomorrowEnd.setHours(23, 59, 59, 999)
+
+    let totalRidesToday = 0
+    let totalKmToday = 0
+    let totalRevenueToday = 0
     let dueNext60Min = 0
     let dueToday = 0
+    let dueTomorrow = 0
+    let active = 0
+    let yetToAssign = 0
+    let cancelledNoShow = 0
 
-    bookings.forEach((booking) => {
-      if (!booking.start_time) return
+    bookingsForStats.forEach((booking) => {
+      // Parse the start_time
+      const startTime = booking.start_time ? new Date(booking.start_time) : null
+      const isToday = startTime && startTime >= todayStart && startTime <= todayEnd
+      const isTomorrow = startTime && startTime >= tomorrowStart && startTime <= tomorrowEnd
 
-      // Parse the start_time (could be ISO string or date string)
-      const startTime = new Date(booking.start_time)
-      if (isNaN(startTime.getTime())) return
-
-      // Only count bookings with status 'created' or 'assigned'
-      const isPending = booking.status === TRIP_STATUSES.CREATED || booking.status === TRIP_STATUSES.ASSIGNED
-
-      if (!isPending) return
-
-      // Check if due in next 60 minutes
-      if (startTime >= now && startTime <= next60Min) {
-        dueNext60Min++
+      // Today Overview - count all bookings for today
+      if (isToday) {
+        totalRidesToday++
+        // Add revenue (fare is in paise)
+        if (booking.fare) {
+          totalRevenueToday += booking.fare
+        }
+        // Add KM (use actual_km if available, otherwise est_km)
+        const km = booking.actual_km || booking.est_km || 0
+        totalKmToday += Number(km)
       }
 
-      // Check if due today
-      if (startTime >= todayStart && startTime <= todayEnd) {
-        dueToday++
+      // Bookings Overview - only count pending bookings (created/assigned)
+      const isPending = booking.status === TRIP_STATUSES.CREATED || booking.status === TRIP_STATUSES.ASSIGNED
+      
+      if (isPending && startTime) {
+        // Due next 60 minutes
+        if (startTime >= now && startTime <= next60Min) {
+          dueNext60Min++
+        }
+        
+        // Due today
+        if (isToday) {
+          dueToday++
+        }
+        
+        // Due tomorrow
+        if (isTomorrow) {
+          dueTomorrow++
+        }
+      }
+
+      // Status Overview
+      if (booking.status === TRIP_STATUSES.ASSIGNED || booking.status === TRIP_STATUSES.ENROUTE) {
+        active++
+      } else if (booking.status === TRIP_STATUSES.CREATED) {
+        yetToAssign++
+      } else if (booking.status === TRIP_STATUSES.CANCELLED || booking.status === TRIP_STATUSES.NO_SHOW) {
+        cancelledNoShow++
       }
     })
 
-    return { dueNext60Min, dueToday }
-  }, [bookings])
+    return {
+      totalRidesToday,
+      totalKmToday,
+      totalRevenueToday,
+      dueNext60Min,
+      dueToday,
+      dueTomorrow,
+      active,
+      yetToAssign,
+      cancelledNoShow,
+    }
+  }, [allBookingsForStats])
 
   // Calculate booking summary from bookings data
   const bookingSummary = useMemo(() => {
@@ -254,56 +322,86 @@ export function Dashboard() {
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-          <MetricCard
-            title="Active Trips"
-            value={metricsLoading ? '...' : metrics?.active_trips || 0}
-            icon="🚗"
-            variant="primary"
-            onClick={() => handleCardClick('status', TRIP_STATUSES.ASSIGNED)}
-          />
-          <MetricCard
-            title="Due Next 60 Min"
-            value={bookingsLoading ? '...' : calculatedMetrics.dueNext60Min}
-            icon="⏰"
-            variant="warning"
-            onClick={() => handleCardClick('status', TRIP_STATUSES.CREATED)}
-          />
-          <MetricCard
-            title="Due Today"
-            value={bookingsLoading ? '...' : calculatedMetrics.dueToday}
-            icon="📅"
-            variant="info"
-            onClick={() => handleCardClick('status', TRIP_STATUSES.CREATED)}
-          />
-          <MetricCard
-            title="Due Tomorrow"
-            value={metricsLoading ? '...' : metrics?.due_tomorrow || 0}
-            icon="📆"
-            variant="info"
-          />
-          <MetricCard
-            title="Cancelled/No-Show"
-            value={metricsLoading ? '...' : metrics?.cancelled_no_show || 0}
-            icon="❌"
-            onClick={() => handleCardClick('status', TRIP_STATUSES.CANCELLED)}
-          />
-          <MetricCard
-            title="Total Rides Today"
-            value={metricsLoading ? '...' : metrics?.total_rides_today || 0}
-            icon="📊"
-          />
-          <MetricCard
-            title="Total KM Today"
-            value={metricsLoading ? '...' : `${(metrics?.total_km_today || 0).toFixed(1)} km`}
-            icon="🛣️"
-          />
-          <MetricCard
-            title="Total Revenue"
-            value={metricsLoading ? '...' : formatCurrency(metrics?.total_revenue_today || 0)}
-            icon="💰"
-            variant="primary"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-6">
+          {/* Today Overview Section */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-text mb-4">Today Overview</h2>
+            <div className="space-y-4">
+              <MetricCard
+                title="Total Rides"
+                value={allBookingsForStats === undefined ? '...' : dashboardStats.totalRidesToday}
+                icon="📊"
+                variant="primary"
+              />
+              <MetricCard
+                title="Total Km"
+                value={allBookingsForStats === undefined ? '...' : `${dashboardStats.totalKmToday.toFixed(1)} km`}
+                icon="🛣️"
+                variant="info"
+              />
+              <MetricCard
+                title="Total Revenue"
+                value={allBookingsForStats === undefined ? '...' : formatCurrency(dashboardStats.totalRevenueToday)}
+                icon="💰"
+                variant="primary"
+              />
+            </div>
+          </div>
+
+          {/* Bookings Overview Section */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-text mb-4">Bookings Overview</h2>
+            <div className="space-y-4">
+              <MetricCard
+                title="Due Next 60 Min"
+                value={allBookingsForStats === undefined ? '...' : dashboardStats.dueNext60Min}
+                icon="⏰"
+                variant="warning"
+                onClick={() => handleCardClick('status', TRIP_STATUSES.CREATED)}
+              />
+              <MetricCard
+                title="Due Today"
+                value={allBookingsForStats === undefined ? '...' : dashboardStats.dueToday}
+                icon="📅"
+                variant="info"
+                onClick={() => handleCardClick('status', TRIP_STATUSES.CREATED)}
+              />
+              <MetricCard
+                title="Due Tomorrow"
+                value={allBookingsForStats === undefined ? '...' : dashboardStats.dueTomorrow}
+                icon="📆"
+                variant="info"
+              />
+            </div>
+          </div>
+
+          {/* Status Overview Section */}
+          <div className="bg-white rounded-lg border border-gray-200 p-6">
+            <h2 className="text-lg font-semibold text-text mb-4">Status Overview</h2>
+            <div className="space-y-4">
+              <MetricCard
+                title="Active"
+                value={allBookingsForStats === undefined ? '...' : dashboardStats.active}
+                icon="🚗"
+                variant="primary"
+                onClick={() => handleCardClick('status', TRIP_STATUSES.ASSIGNED)}
+              />
+              <MetricCard
+                title="Yet to Assign"
+                value={allBookingsForStats === undefined ? '...' : dashboardStats.yetToAssign}
+                icon="⏳"
+                variant="warning"
+                onClick={() => handleCardClick('status', TRIP_STATUSES.CREATED)}
+              />
+              <MetricCard
+                title="Cancelled/No-Show"
+                value={allBookingsForStats === undefined ? '...' : dashboardStats.cancelledNoShow}
+                icon="❌"
+                variant="danger"
+                onClick={() => handleCardClick('status', TRIP_STATUSES.CANCELLED)}
+              />
+            </div>
+          </div>
         </div>
       )}
 

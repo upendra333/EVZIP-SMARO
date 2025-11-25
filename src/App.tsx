@@ -10,6 +10,7 @@ import { UserManagement } from './pages/UserManagement'
 import { Login } from './pages/Login'
 import { SupabaseError } from './components/shared/SupabaseError'
 import { ProtectedRoute } from './components/shared/ProtectedRoute'
+import { SidebarProvider } from './contexts/SidebarContext'
 import { ROUTES } from './utils/constants'
 import { PERMISSIONS } from './utils/permissions'
 import { isSupabaseConfigured } from './lib/supabase'
@@ -21,7 +22,8 @@ function App() {
   }
 
   return (
-    <BrowserRouter>
+    <SidebarProvider>
+      <BrowserRouter>
       <Routes>
         <Route path={ROUTES.LOGIN} element={<Login />} />
         <Route
@@ -96,6 +98,7 @@ function App() {
         />
       </Routes>
     </BrowserRouter>
+    </SidebarProvider>
   )
 }
 

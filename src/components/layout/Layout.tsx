@@ -5,6 +5,7 @@ import { Sidebar } from './Sidebar'
 import { TopBar } from './TopBar'
 import { Footer } from './Footer'
 import { useOperator } from '../../hooks/useOperator'
+import { useSidebar } from '../../hooks/useSidebar'
 import { ROUTES } from '../../utils/constants'
 
 interface LayoutProps {
@@ -13,6 +14,7 @@ interface LayoutProps {
 
 export function Layout({ children }: LayoutProps) {
   const { operator, isLoading, setOperator } = useOperator()
+  const { isVisible: isSidebarVisible } = useSidebar()
   const [checkingAuth, setCheckingAuth] = useState(true)
 
   // Check localStorage and update operator if needed
@@ -50,7 +52,9 @@ export function Layout({ children }: LayoutProps) {
     <div className="min-h-screen bg-gray-50 flex">
       <Sidebar />
       
-      <div className="flex-1 ml-64 flex flex-col min-h-screen">
+      <div className={`flex-1 flex flex-col min-h-screen transition-all duration-300 ${
+        isSidebarVisible ? 'ml-0 lg:ml-64' : 'ml-0'
+      }`}>
         <TopBar />
         
         <main className="flex-1 mt-16 p-6 overflow-y-auto">

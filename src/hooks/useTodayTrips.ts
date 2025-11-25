@@ -15,6 +15,8 @@ export interface TripListItem {
   status: string
   fare: number | null
   ref_id: string
+  est_km?: number | null
+  actual_km?: number | null
 }
 
 export function useTodayTrips(filters?: {
