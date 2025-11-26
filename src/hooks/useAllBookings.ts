@@ -81,7 +81,6 @@ export function useAllBookings(filters?: {
                 pickup_at,
                 fare,
                 est_km,
-                actual_km,
                 drivers(name),
                 vehicles(reg_no),
                 customers(name),
@@ -101,7 +100,6 @@ export function useAllBookings(filters?: {
                 start_at,
                 fare,
                 est_km,
-                actual_km,
                 drivers(name),
                 vehicles(reg_no),
                 customers(name),
@@ -119,7 +117,6 @@ export function useAllBookings(filters?: {
                 pickup_at,
                 fare,
                 est_km,
-                actual_km,
                 pickup,
                 drop,
                 drivers(name),
@@ -132,6 +129,44 @@ export function useAllBookings(filters?: {
               .is('deleted_at', null)
           : Promise.resolve({ data: [], error: null }),
       ])
+
+      // Log errors if any
+      if (subscriptionData.error) {
+        console.error('Error fetching subscription rides:', subscriptionData.error)
+      }
+      if (airportData.error) {
+        console.error('Error fetching airport bookings:', airportData.error)
+      }
+      if (rentalData.error) {
+        console.error('Error fetching rental bookings:', rentalData.error)
+      }
+      if (manualData.error) {
+        console.error('Error fetching manual rides:', manualData.error)
+      }
+
+      // Log missing bookings
+      const foundSubscriptionIds = new Set((subscriptionData.data || []).map((sr: any) => sr.id))
+      const foundAirportIds = new Set((airportData.data || []).map((ab: any) => ab.id))
+      const foundRentalIds = new Set((rentalData.data || []).map((rb: any) => rb.id))
+      const foundManualIds = new Set((manualData.data || []).map((mr: any) => mr.id))
+      
+      const missingSubscriptionIds = subscriptionTripIds.filter(id => !foundSubscriptionIds.has(id))
+      const missingAirportIds = airportTripIds.filter(id => !foundAirportIds.has(id))
+      const missingRentalIds = rentalTripIds.filter(id => !foundRentalIds.has(id))
+      const missingManualIds = manualTripIds.filter(id => !foundManualIds.has(id))
+      
+      if (missingSubscriptionIds.length > 0) {
+        console.warn(`Missing subscription rides data for trip ref_ids:`, missingSubscriptionIds)
+      }
+      if (missingAirportIds.length > 0) {
+        console.warn(`Missing airport bookings data for trip ref_ids:`, missingAirportIds)
+      }
+      if (missingRentalIds.length > 0) {
+        console.warn(`Missing rental bookings data for trip ref_ids:`, missingRentalIds)
+      }
+      if (missingManualIds.length > 0) {
+        console.warn(`Missing manual rides data for trip ref_ids:`, missingManualIds)
+      }
 
       // Create lookup maps
       const subscriptionMap = (subscriptionData.data || []).reduce((acc: Record<string, any>, sr: any) => {
@@ -198,7 +233,7 @@ export function useAllBookings(filters?: {
               fare: ab.fare,
               ref_id: trip.ref_id,
               est_km: ab.est_km || null,
-              actual_km: ab.actual_km || null,
+              actual_km: null, // airport_bookings doesn't have actual_km
             }
           }
         } else if (trip.type === 'rental') {
@@ -220,7 +255,7 @@ export function useAllBookings(filters?: {
               fare: rb.fare,
               ref_id: trip.ref_id,
               est_km: rb.est_km || null,
-              actual_km: rb.actual_km || null,
+              actual_km: null, // rental_bookings doesn't have actual_km
             }
           }
         } else if (trip.type === 'manual') {
@@ -243,7 +278,7 @@ export function useAllBookings(filters?: {
               fare: mr.fare,
               ref_id: trip.ref_id,
               est_km: mr.est_km || null,
-              actual_km: mr.actual_km || null,
+              actual_km: null, // manual_rides doesn't have actual_km
             }
           }
         }

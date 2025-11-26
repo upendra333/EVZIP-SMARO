@@ -3,6 +3,51 @@ import { supabase } from '../lib/supabase'
 import { useOperator } from './useOperator'
 import { playNotificationSound } from '../utils/notificationSound'
 
+// Helper function to ensure trip record exists for a booking
+async function ensureTripExists(type: 'subscription' | 'airport' | 'rental' | 'manual', refId: string, status: string): Promise<void> {
+  // Wait a bit to allow trigger to complete (if it exists)
+  await new Promise(resolve => setTimeout(resolve, 100))
+  
+  // Check if trip already exists
+  const { data: existingTrip, error: checkError } = await supabase
+    .from('trips')
+    .select('id')
+    .eq('type', type)
+    .eq('ref_id', refId)
+    .maybeSingle()
+
+  if (checkError) {
+    console.error(`Error checking trip existence for ${type} booking ${refId}:`, checkError)
+  }
+
+  // If trip doesn't exist, create it
+  if (!existingTrip) {
+    const { data: newTrip, error: insertError } = await supabase
+      .from('trips')
+      .insert({
+        type,
+        ref_id: refId,
+        status,
+      })
+      .select('id')
+      .single()
+
+    if (insertError) {
+      // Check if it's a unique constraint violation (trip was created by trigger)
+      if (insertError.code === '23505' || insertError.message.includes('duplicate') || insertError.message.includes('unique')) {
+        // Trip was likely created by trigger, this is fine
+        console.log(`Trip for ${type} booking ${refId} already exists (likely created by trigger)`)
+      } else {
+        // Real error - log it
+        console.error(`Failed to create trip for ${type} booking ${refId}:`, insertError)
+        throw new Error(`Failed to create trip record: ${insertError.message}`)
+      }
+    } else if (newTrip) {
+      console.log(`Successfully created trip ${newTrip.id} for ${type} booking ${refId}`)
+    }
+  }
+}
+
 // Helper function to get or create customer
 async function getOrCreateCustomer(name: string, phone?: string): Promise<string> {
   // First, try to find existing customer by phone if provided
@@ -90,6 +135,9 @@ export function useCreateSubscriptionRide() {
 
       if (error) throw error
 
+      // Ensure trip record exists (fallback if trigger didn't fire)
+      await ensureTripExists('subscription', ride.id, ride.status)
+
       // Create audit log entry
       await supabase.from('audit_log').insert({
         actor_name: operator?.name || 'System',
@@ -98,6 +146,25 @@ export function useCreateSubscriptionRide() {
         action: 'create',
         diff_json: { ...data },
       })
+
+      // Verify trip was created (with retry)
+      let tripVerified = false
+      for (let i = 0; i < 3; i++) {
+        const { data: trip } = await supabase
+          .from('trips')
+          .select('id')
+          .eq('type', 'subscription')
+          .eq('ref_id', ride.id)
+          .maybeSingle()
+        if (trip) {
+          tripVerified = true
+          break
+        }
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+      if (!tripVerified) {
+        console.error(`Warning: Trip not found for subscription ride ${ride.id} after creation`)
+      }
 
       return ride
     },
@@ -158,6 +225,9 @@ export function useCreateAirportBooking() {
 
       if (error) throw error
 
+      // Ensure trip record exists (fallback if trigger didn't fire)
+      await ensureTripExists('airport', booking.id, booking.status)
+
       // Create audit log entry
       await supabase.from('audit_log').insert({
         actor_name: operator?.name || 'System',
@@ -166,6 +236,25 @@ export function useCreateAirportBooking() {
         action: 'create',
         diff_json: { ...data },
       })
+
+      // Verify trip was created (with retry)
+      let tripVerified = false
+      for (let i = 0; i < 3; i++) {
+        const { data: trip } = await supabase
+          .from('trips')
+          .select('id')
+          .eq('type', 'airport')
+          .eq('ref_id', booking.id)
+          .maybeSingle()
+        if (trip) {
+          tripVerified = true
+          break
+        }
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+      if (!tripVerified) {
+        console.error(`Warning: Trip not found for airport booking ${booking.id} after creation`)
+      }
 
       return booking
     },
@@ -231,6 +320,9 @@ export function useCreateRentalBooking() {
 
       if (error) throw error
 
+      // Ensure trip record exists (fallback if trigger didn't fire)
+      await ensureTripExists('rental', booking.id, booking.status)
+
       // Create audit log entry
       await supabase.from('audit_log').insert({
         actor_name: operator?.name || 'System',
@@ -239,6 +331,25 @@ export function useCreateRentalBooking() {
         action: 'create',
         diff_json: { ...data },
       })
+
+      // Verify trip was created (with retry)
+      let tripVerified = false
+      for (let i = 0; i < 3; i++) {
+        const { data: trip } = await supabase
+          .from('trips')
+          .select('id')
+          .eq('type', 'rental')
+          .eq('ref_id', booking.id)
+          .maybeSingle()
+        if (trip) {
+          tripVerified = true
+          break
+        }
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+      if (!tripVerified) {
+        console.error(`Warning: Trip not found for rental booking ${booking.id} after creation`)
+      }
 
       return booking
     },
@@ -298,6 +409,9 @@ export function useCreateManualRide() {
 
       if (error) throw error
 
+      // Ensure trip record exists (fallback if trigger didn't fire)
+      await ensureTripExists('manual', ride.id, ride.status)
+
       // Create audit log entry
       await supabase.from('audit_log').insert({
         actor_name: operator?.name || 'System',
@@ -306,6 +420,25 @@ export function useCreateManualRide() {
         action: 'create',
         diff_json: { ...data },
       })
+
+      // Verify trip was created (with retry)
+      let tripVerified = false
+      for (let i = 0; i < 3; i++) {
+        const { data: trip } = await supabase
+          .from('trips')
+          .select('id')
+          .eq('type', 'manual')
+          .eq('ref_id', ride.id)
+          .maybeSingle()
+        if (trip) {
+          tripVerified = true
+          break
+        }
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+      if (!tripVerified) {
+        console.error(`Warning: Trip not found for manual ride ${ride.id} after creation`)
+      }
 
       return ride
     },
