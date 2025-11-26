@@ -7,6 +7,9 @@ export interface Filters {
   driver?: string
   vehicle?: string
   customer?: string
+  dueNext60Min?: boolean
+  dueToday?: boolean
+  dueTomorrow?: boolean
 }
 
 interface FiltersBarProps {
@@ -100,7 +103,7 @@ export function FiltersBar({ filters, onFiltersChange }: FiltersBarProps) {
       </div>
 
       {/* Clear Filters */}
-      {(filters.type || filters.status || filters.driver || filters.vehicle || filters.customer) && (
+      {(filters.type || filters.status || filters.driver || filters.vehicle || filters.customer || filters.dueNext60Min || filters.dueToday || filters.dueTomorrow) && (
         <div className="mt-4 pt-4 border-t border-gray-200">
           <button
             onClick={() => onFiltersChange({})}

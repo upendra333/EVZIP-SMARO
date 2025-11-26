@@ -28,7 +28,7 @@ export function VehicleAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { data: allVehicles } = useAllVehicles()
+  const { data: allVehicles, isLoading: isLoadingVehicles, error: vehiclesError } = useAllVehicles()
   const { data: searchResults, isLoading: isSearching } = useSearchVehicles(
     searchTerm.length >= 2 ? searchTerm : '',
     availableOnly
@@ -149,6 +149,21 @@ export function VehicleAutocomplete({
   const displayResults = getFilteredResults()
   const hasResults = displayResults.length > 0
 
+  // Debug logging
+  useEffect(() => {
+    if (showDropdown) {
+      console.log('VehicleAutocomplete - Dropdown shown:', {
+        allVehiclesCount: allVehicles?.length || 0,
+        displayResultsCount: displayResults.length,
+        searchTerm,
+        availableOnly,
+        hubId,
+        isLoadingVehicles,
+        vehiclesError: vehiclesError?.message,
+      })
+    }
+  }, [showDropdown, allVehicles?.length, displayResults.length, searchTerm, availableOnly, hubId, isLoadingVehicles, vehiclesError])
+
   return (
     <div ref={containerRef} className="relative">
       <input
@@ -169,11 +184,17 @@ export function VehicleAutocomplete({
 
       {showDropdown && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {isSearching && (
-            <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
+          {(isSearching || isLoadingVehicles) && (
+            <div className="px-4 py-2 text-sm text-gray-500">Loading...</div>
           )}
 
-          {!isSearching && hasResults && (
+          {vehiclesError && (
+            <div className="px-4 py-2 text-sm text-red-500">
+              Error loading vehicles: {vehiclesError.message}
+            </div>
+          )}
+
+          {!isSearching && !isLoadingVehicles && !vehiclesError && hasResults && (
             <>
               {displayResults.map((vehicle, index) => (
                 <button
@@ -196,7 +217,7 @@ export function VehicleAutocomplete({
             </>
           )}
 
-          {!isSearching && !hasResults && (
+          {!isSearching && !isLoadingVehicles && !vehiclesError && !hasResults && (
             <div className="px-4 py-2 text-sm text-gray-500">
               {searchTerm.length > 0
                 ? `No matching ${availableOnly ? 'available ' : ''}vehicles found.`

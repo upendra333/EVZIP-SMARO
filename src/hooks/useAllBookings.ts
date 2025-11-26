@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { TripListItem } from './useTodayTrips'
+import { TRIP_STATUSES } from '../utils/constants'
 
 export function useAllBookings(filters?: {
   type?: string
@@ -10,6 +11,9 @@ export function useAllBookings(filters?: {
   vehicle?: string
   dateFrom?: string
   dateTo?: string
+  dueNext60Min?: boolean
+  dueToday?: boolean
+  dueTomorrow?: boolean
 }) {
   return useQuery({
     queryKey: ['allBookings', filters],
@@ -322,6 +326,56 @@ export function useAllBookings(filters?: {
           if (filters.dateFrom && tripDate < filters.dateFrom) return false
           if (filters.dateTo && tripDate > filters.dateTo) return false
           return true
+        })
+      }
+      
+      // Filter by "Due Next 60 Min" - show trips with start_time within next 60 minutes
+      if (filters?.dueNext60Min) {
+        const now = new Date()
+        const next60Min = new Date(now.getTime() + 60 * 60 * 1000) // 60 minutes from now
+        
+        filteredTrips = filteredTrips.filter((t) => {
+          if (!t.start_time) return false
+          const startTime = new Date(t.start_time)
+          // Include trips that start between now and next 60 minutes
+          return startTime >= now && startTime <= next60Min
+        })
+      }
+      
+      // Filter by "Due Today" - show trips which are created (not started) and have start time today
+      if (filters?.dueToday) {
+        const today = new Date()
+        today.setHours(0, 0, 0, 0)
+        const todayStart = new Date(today)
+        const todayEnd = new Date(today)
+        todayEnd.setHours(23, 59, 59, 999)
+        
+        filteredTrips = filteredTrips.filter((t) => {
+          if (!t.start_time) return false
+          // Must be created status (not started yet)
+          if (t.status !== TRIP_STATUSES.CREATED) return false
+          const startTime = new Date(t.start_time)
+          // Start time must be today
+          return startTime >= todayStart && startTime <= todayEnd
+        })
+      }
+      
+      // Filter by "Due Tomorrow" - show all trips which have start time tomorrow (regardless of status, excluding cancelled/no-show)
+      if (filters?.dueTomorrow) {
+        const tomorrow = new Date()
+        tomorrow.setDate(tomorrow.getDate() + 1)
+        tomorrow.setHours(0, 0, 0, 0)
+        const tomorrowStart = new Date(tomorrow)
+        const tomorrowEnd = new Date(tomorrow)
+        tomorrowEnd.setHours(23, 59, 59, 999)
+        
+        filteredTrips = filteredTrips.filter((t) => {
+          if (!t.start_time) return false
+          // Exclude cancelled/no-show trips
+          if (t.status === TRIP_STATUSES.CANCELLED || t.status === TRIP_STATUSES.NO_SHOW) return false
+          const startTime = new Date(t.start_time)
+          // Start time must be tomorrow
+          return startTime >= tomorrowStart && startTime <= tomorrowEnd
         })
       }
       

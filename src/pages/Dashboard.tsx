@@ -33,6 +33,9 @@ export function Dashboard() {
     status: filters.status,
     driver: filters.driver,
     vehicle: filters.vehicle,
+    dueNext60Min: filters.dueNext60Min,
+    dueToday: filters.dueToday,
+    dueTomorrow: filters.dueTomorrow,
   })
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -150,30 +153,31 @@ export function Dashboard() {
         totalKmToday += Number(km)
       }
 
-      // Bookings Overview - only count pending bookings (created/assigned)
-      const isPending = booking.status === TRIP_STATUSES.CREATED || booking.status === TRIP_STATUSES.ASSIGNED
+      // Bookings Overview - show trips based on start time, excluding cancelled/no-show
+      const isNotCancelled = booking.status !== TRIP_STATUSES.CANCELLED && booking.status !== TRIP_STATUSES.NO_SHOW
       
-      if (isPending && startTime) {
-        // Due next 60 minutes
+      if (isNotCancelled && startTime) {
+        // Due next 60 minutes - show trips with start time within next 60 min (regardless of status)
         if (startTime >= now && startTime <= next60Min) {
           dueNext60Min++
         }
         
-        // Due today
-        if (isToday) {
+        // Due today - only count trips which are created (not started yet) and have start time today
+        if (booking.status === TRIP_STATUSES.CREATED && isToday) {
           dueToday++
         }
         
-        // Due tomorrow
+        // Due tomorrow - show all trips which have start time tomorrow (regardless of status, excluding cancelled/no-show)
         if (isTomorrow) {
           dueTomorrow++
         }
       }
 
       // Status Overview
-      if (booking.status === TRIP_STATUSES.ASSIGNED || booking.status === TRIP_STATUSES.ENROUTE) {
+      // Active trips should only show trips which are enroute (not assigned)
+      if (booking.status === TRIP_STATUSES.ENROUTE) {
         active++
-      } else if (booking.status === TRIP_STATUSES.CREATED) {
+      } else if (booking.status === TRIP_STATUSES.CREATED || booking.status === TRIP_STATUSES.ASSIGNED) {
         yetToAssign++
       } else if (booking.status === TRIP_STATUSES.CANCELLED || booking.status === TRIP_STATUSES.NO_SHOW) {
         cancelledNoShow++
@@ -332,18 +336,30 @@ export function Dashboard() {
                 value={allBookingsForStats === undefined ? '...' : dashboardStats.totalRidesToday}
                 icon="📊"
                 variant="primary"
+                onClick={() => {
+                  // Clear all filters and show all bookings
+                  setFilters({})
+                }}
               />
               <MetricCard
                 title="Total Km"
                 value={allBookingsForStats === undefined ? '...' : `${dashboardStats.totalKmToday.toFixed(1)} km`}
                 icon="🛣️"
                 variant="info"
+                onClick={() => {
+                  // Clear all filters and show all bookings
+                  setFilters({})
+                }}
               />
               <MetricCard
                 title="Total Revenue"
                 value={allBookingsForStats === undefined ? '...' : formatCurrency(dashboardStats.totalRevenueToday)}
                 icon="💰"
                 variant="primary"
+                onClick={() => {
+                  // Clear all filters and show all bookings
+                  setFilters({})
+                }}
               />
             </div>
           </div>
@@ -357,20 +373,60 @@ export function Dashboard() {
                 value={allBookingsForStats === undefined ? '...' : dashboardStats.dueNext60Min}
                 icon="⏰"
                 variant="warning"
-                onClick={() => handleCardClick('status', TRIP_STATUSES.CREATED)}
+                onClick={() => {
+                  // Toggle dueNext60Min filter - if already active, clear it; otherwise set it and clear other filters
+                  setFilters((prev) => ({
+                    ...prev,
+                    dueNext60Min: prev.dueNext60Min ? undefined : true,
+                    dueToday: undefined, // Clear other time filters
+                    dueTomorrow: undefined, // Clear other time filters
+                    status: undefined, // Clear status filter
+                    type: undefined, // Clear type filter
+                    driver: undefined, // Clear driver filter
+                    vehicle: undefined, // Clear vehicle filter
+                    customer: undefined, // Clear customer filter
+                  }))
+                }}
               />
               <MetricCard
                 title="Due Today"
                 value={allBookingsForStats === undefined ? '...' : dashboardStats.dueToday}
                 icon="📅"
                 variant="info"
-                onClick={() => handleCardClick('status', TRIP_STATUSES.CREATED)}
+                onClick={() => {
+                  // Toggle dueToday filter - if already active, clear it; otherwise set it and clear other filters
+                  setFilters((prev) => ({
+                    ...prev,
+                    dueToday: prev.dueToday ? undefined : true,
+                    dueNext60Min: undefined, // Clear other time filters
+                    dueTomorrow: undefined, // Clear other time filters
+                    status: undefined, // Clear status filter
+                    type: undefined, // Clear type filter
+                    driver: undefined, // Clear driver filter
+                    vehicle: undefined, // Clear vehicle filter
+                    customer: undefined, // Clear customer filter
+                  }))
+                }}
               />
               <MetricCard
                 title="Due Tomorrow"
                 value={allBookingsForStats === undefined ? '...' : dashboardStats.dueTomorrow}
                 icon="📆"
                 variant="info"
+                onClick={() => {
+                  // Toggle dueTomorrow filter - if already active, clear it; otherwise set it and clear other filters
+                  setFilters((prev) => ({
+                    ...prev,
+                    dueTomorrow: prev.dueTomorrow ? undefined : true,
+                    dueNext60Min: undefined, // Clear other time filters
+                    dueToday: undefined, // Clear other time filters
+                    status: undefined, // Clear status filter
+                    type: undefined, // Clear type filter
+                    driver: undefined, // Clear driver filter
+                    vehicle: undefined, // Clear vehicle filter
+                    customer: undefined, // Clear customer filter
+                  }))
+                }}
               />
             </div>
           </div>
@@ -384,21 +440,30 @@ export function Dashboard() {
                 value={allBookingsForStats === undefined ? '...' : dashboardStats.active}
                 icon="🚗"
                 variant="primary"
-                onClick={() => handleCardClick('status', TRIP_STATUSES.ASSIGNED)}
+                onClick={() => {
+                  // Clear all filters and show all bookings
+                  setFilters({})
+                }}
               />
               <MetricCard
                 title="Yet to Assign"
                 value={allBookingsForStats === undefined ? '...' : dashboardStats.yetToAssign}
                 icon="⏳"
                 variant="warning"
-                onClick={() => handleCardClick('status', TRIP_STATUSES.CREATED)}
+                onClick={() => {
+                  // Clear all filters and show all bookings
+                  setFilters({})
+                }}
               />
               <MetricCard
                 title="Cancelled/No-Show"
                 value={allBookingsForStats === undefined ? '...' : dashboardStats.cancelledNoShow}
                 icon="❌"
                 variant="danger"
-                onClick={() => handleCardClick('status', TRIP_STATUSES.CANCELLED)}
+                onClick={() => {
+                  // Clear all filters and show all bookings
+                  setFilters({})
+                }}
               />
             </div>
           </div>

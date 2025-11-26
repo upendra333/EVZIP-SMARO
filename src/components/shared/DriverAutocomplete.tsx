@@ -28,7 +28,7 @@ export function DriverAutocomplete({
   const containerRef = useRef<HTMLDivElement>(null)
   const inputRef = useRef<HTMLInputElement>(null)
 
-  const { data: allDrivers } = useAllDrivers()
+  const { data: allDrivers, isLoading: isLoadingDrivers, error: driversError } = useAllDrivers()
   const { data: searchResults, isLoading: isSearching } = useSearchDrivers(
     searchTerm.length >= 2 ? searchTerm : '',
     activeOnly
@@ -149,6 +149,21 @@ export function DriverAutocomplete({
   const displayResults = getFilteredResults()
   const hasResults = displayResults.length > 0
 
+  // Debug logging
+  useEffect(() => {
+    if (showDropdown) {
+      console.log('DriverAutocomplete - Dropdown shown:', {
+        allDriversCount: allDrivers?.length || 0,
+        displayResultsCount: displayResults.length,
+        searchTerm,
+        activeOnly,
+        hubId,
+        isLoadingDrivers,
+        driversError: driversError?.message,
+      })
+    }
+  }, [showDropdown, allDrivers?.length, displayResults.length, searchTerm, activeOnly, hubId, isLoadingDrivers, driversError])
+
   return (
     <div ref={containerRef} className="relative">
       <input
@@ -165,11 +180,17 @@ export function DriverAutocomplete({
 
       {showDropdown && (
         <div className="absolute z-50 w-full mt-1 bg-white border border-gray-300 rounded-lg shadow-lg max-h-60 overflow-y-auto">
-          {isSearching && (
-            <div className="px-4 py-2 text-sm text-gray-500">Searching...</div>
+          {(isSearching || isLoadingDrivers) && (
+            <div className="px-4 py-2 text-sm text-gray-500">Loading...</div>
           )}
 
-          {!isSearching && hasResults && (
+          {driversError && (
+            <div className="px-4 py-2 text-sm text-red-500">
+              Error loading drivers: {driversError.message}
+            </div>
+          )}
+
+          {!isSearching && !isLoadingDrivers && !driversError && hasResults && (
             <>
               {displayResults.map((driver, index) => (
                 <button
@@ -190,7 +211,7 @@ export function DriverAutocomplete({
             </>
           )}
 
-          {!isSearching && !hasResults && (
+          {!isSearching && !isLoadingDrivers && !driversError && !hasResults && (
             <div className="px-4 py-2 text-sm text-gray-500">
               {searchTerm.length > 0
                 ? `No matching ${activeOnly ? 'active ' : ''}drivers found.`
