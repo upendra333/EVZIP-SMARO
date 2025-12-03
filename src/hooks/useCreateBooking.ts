@@ -287,6 +287,8 @@ export function useCreateRentalBooking() {
       customer_phone?: string
       start_at: string
       end_at: string
+      pickup: string
+      drop: string
       package_hours: number
       package_km: number
       est_km?: number
@@ -305,6 +307,8 @@ export function useCreateRentalBooking() {
           customer_id: customerId,
           start_at: data.start_at,
           end_at: data.end_at,
+          pickup: data.pickup,
+          drop: data.drop,
           package_hours: data.package_hours,
           package_km: data.package_km,
           est_km: data.est_km,

@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Operator, Role } from '../utils/types'
-import { hasPermission as checkPermission, getRolePermissions, type Permission } from '../utils/permissions'
+import { hasPermission as checkPermission, getRolePermissions, checkPermissionWithDB, type Permission } from '../utils/permissions'
 import type { User } from './useAuth'
+import { useRolePermissions } from './useRolePermissions'
 
 const STORAGE_KEY_CURRENT_USER = 'currentUser'
 const STORAGE_KEY_OPERATOR_NAME = 'operatorName'
@@ -11,6 +12,9 @@ export function useOperator() {
   const [operator, setOperator] = useState<Operator | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const operatorRef = useRef<Operator | null>(null)
+  
+  // Fetch database-backed permissions
+  const { data: dbPermissions } = useRolePermissions()
 
   // Update ref when operator changes
   useEffect(() => {
@@ -119,10 +123,10 @@ export function useOperator() {
     setOperator(null)
   }
 
-  // Check if user has a specific permission
+  // Check if user has a specific permission (uses database permissions if available)
   const can = (permission: Permission): boolean => {
     if (!operator) return false
-    return checkPermission(operator.role, permission)
+    return checkPermissionWithDB(operator.role, permission, dbPermissions || undefined)
   }
 
   // Legacy method for role hierarchy (kept for backward compatibility)
@@ -139,9 +143,13 @@ export function useOperator() {
     return roleHierarchy[operator.role] >= roleHierarchy[requiredRole]
   }
 
-  // Get all permissions for current user
+  // Get all permissions for current user (uses database permissions if available)
   const permissions = (): Permission[] => {
     if (!operator) return []
+    // Use database permissions if available, otherwise fallback to hardcoded
+    if (dbPermissions && dbPermissions[operator.role]) {
+      return dbPermissions[operator.role]
+    }
     return getRolePermissions(operator.role)
   }
 

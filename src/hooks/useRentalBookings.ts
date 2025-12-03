@@ -8,6 +8,8 @@ export interface RentalBooking {
   package_km: number
   start_at: string
   end_at: string
+  pickup: string | null
+  drop: string | null
   est_km: number | null
   extra_km_rate: number | null
   per_hour_rate: number | null
@@ -63,6 +65,8 @@ export function useRentalBookings(filters?: {
           package_km,
           start_at,
           end_at,
+          pickup,
+          drop,
           est_km,
           extra_km_rate,
           per_hour_rate,

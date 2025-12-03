@@ -18,6 +18,8 @@ export function CreateRentalBookingModal({
     customer_phone: '',
     start_at: '',
     end_at: '',
+    pickup: '',
+    drop: '',
     package_hours: '4',
     package_km: '80',
     est_km: '',
@@ -45,7 +47,7 @@ export function CreateRentalBookingModal({
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (!formData.customer_name || !formData.start_at || !formData.end_at) {
+    if (!formData.customer_name || !formData.start_at || !formData.end_at || !formData.pickup || !formData.drop) {
       alert('Please fill in all required fields')
       return
     }
@@ -74,6 +76,8 @@ export function CreateRentalBookingModal({
         customer_phone: formData.customer_phone.trim() || undefined,
         start_at: startAtISO,
         end_at: endAtISO,
+        pickup: formData.pickup.trim(),
+        drop: formData.drop.trim(),
         package_hours: parseInt(formData.package_hours),
         package_km: parseInt(formData.package_km),
         est_km: formData.est_km ? parseFloat(formData.est_km) : undefined,
@@ -90,6 +94,8 @@ export function CreateRentalBookingModal({
         customer_phone: '',
         start_at: '',
         end_at: '',
+        pickup: '',
+        drop: '',
         package_hours: '4',
         package_km: '80',
         est_km: '',
@@ -170,6 +176,34 @@ export function CreateRentalBookingModal({
                 onChange={(e) => setFormData((prev) => ({ ...prev, end_at: e.target.value }))}
                 required
                 min={formData.start_at}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Pickup Location <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.pickup}
+                onChange={(e) => setFormData((prev) => ({ ...prev, pickup: e.target.value }))}
+                required
+                placeholder="e.g., Customer Address"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Drop Location <span className="text-red-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.drop}
+                onChange={(e) => setFormData((prev) => ({ ...prev, drop: e.target.value }))}
+                required
+                placeholder="e.g., Destination Address"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>

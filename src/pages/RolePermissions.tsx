@@ -1,13 +1,18 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { ROLES } from '../utils/constants'
 import { PERMISSION_LABELS, PERMISSION_CATEGORIES, ROLE_PERMISSIONS, type Permission } from '../utils/permissions'
 import type { Role } from '../utils/types'
+import { useRolePermissions, useUpdateRolePermissions } from '../hooks/useRolePermissions'
 
 // Define role order
 const ROLE_ORDER: Role[] = ['read_only', 'supervisor', 'manager', 'admin']
 
 export function RolePermissions() {
   const [selectedRole, setSelectedRole] = useState<Role>('supervisor')
+  const { data: dbPermissions, isLoading: isLoadingPermissions } = useRolePermissions()
+  const updatePermissionsMutation = useUpdateRolePermissions()
+  
+  // Initialize with database permissions or fallback to hardcoded defaults
   const [rolePermissions, setRolePermissions] = useState<Record<Role, Permission[]>>(() => {
     const initial: Record<Role, Permission[]> = {} as Record<Role, Permission[]>
     for (const role of Object.keys(ROLE_PERMISSIONS) as Role[]) {
@@ -15,6 +20,13 @@ export function RolePermissions() {
     }
     return initial
   })
+  
+  // Update permissions when database permissions are loaded
+  useEffect(() => {
+    if (dbPermissions) {
+      setRolePermissions(dbPermissions)
+    }
+  }, [dbPermissions])
 
   const handleTogglePermission = (role: Role, permission: Permission) => {
     setRolePermissions((prev) => {
@@ -49,12 +61,23 @@ export function RolePermissions() {
     })
   }
 
-  const handleSave = () => {
-    // In a real application, this would save to the database
-    // For now, we'll just show an alert
-    alert('Permissions saved! (Note: This is a demo. In production, this would save to the database.)')
-    // You could also store in localStorage for persistence:
-    // localStorage.setItem('rolePermissions', JSON.stringify(rolePermissions))
+  const handleSave = async () => {
+    try {
+      // Save each role's permissions to the database
+      const savePromises = Object.entries(rolePermissions).map(([role, permissions]) =>
+        updatePermissionsMutation.mutateAsync({
+          role: role as Role,
+          permissions: permissions,
+        })
+      )
+      
+      await Promise.all(savePromises)
+      alert('Permissions saved successfully to database!')
+    } catch (error: any) {
+      console.error('Error saving permissions:', error)
+      const errorMessage = error?.message || 'Error saving permissions. Please try again.'
+      alert(`Error: ${errorMessage}`)
+    }
   }
 
   const handleReset = () => {
@@ -69,11 +92,30 @@ export function RolePermissions() {
 
   const currentPerms = rolePermissions[selectedRole] || []
 
+  if (isLoadingPermissions) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+          <p className="text-gray-600">Loading permissions...</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text">Role & Permissions</h1>
         <p className="text-gray-600 mt-1">Manage permissions for each user role</p>
+        {!dbPermissions && (
+          <div className="mt-2 p-3 bg-yellow-50 border border-yellow-200 rounded-lg">
+            <p className="text-sm text-yellow-800">
+              ⚠️ Database permissions not available. Using default permissions. 
+              Please run the migration: <code className="bg-yellow-100 px-1 rounded">database/19_create_role_permissions_table.sql</code>
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Role Selector */}
@@ -114,9 +156,20 @@ export function RolePermissions() {
             </button>
             <button
               onClick={handleSave}
-              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors"
+              disabled={updatePermissionsMutation.isPending}
+              className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
             >
-              Save Permissions
+              {updatePermissionsMutation.isPending ? (
+                <>
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Saving...
+                </>
+              ) : (
+                'Save Permissions'
+              )}
             </button>
           </div>
         </div>

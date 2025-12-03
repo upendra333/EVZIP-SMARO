@@ -44,6 +44,10 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
   const [pendingPickupAt, setPendingPickupAt] = useState<string>('')
   const [pendingStartAt, setPendingStartAt] = useState<string>('')
   const [pendingEndAt, setPendingEndAt] = useState<string>('')
+  const [pendingPaymentMode, setPendingPaymentMode] = useState<string>('')
+  const [pendingPaymentComment, setPendingPaymentComment] = useState<string>('')
+  const [pendingEstKm, setPendingEstKm] = useState<string>('')
+  const [pendingActualKm, setPendingActualKm] = useState<string>('')
   const [hasPendingChanges, setHasPendingChanges] = useState(false)
 
   // Get full trip details with IDs (only if trip exists)
@@ -117,6 +121,26 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
   // Get audit log for timeline (only if trip exists)
   const { data: auditLog } = useAuditLog(trip?.id || '', 'trips')
 
+  // Get existing payment for this trip (only if trip exists)
+  const { data: existingPayment } = useQuery({
+    queryKey: ['tripPayment', trip?.id],
+    queryFn: async () => {
+      if (!trip?.id) return null
+      
+      const { data, error } = await supabase
+        .from('payments')
+        .select('id, method, txn_ref, amount, status, received_at')
+        .eq('trip_id', trip.id)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle()
+
+      if (error) throw error
+      return data
+    },
+    enabled: !!trip?.id,
+  })
+
   // Get carried forward rides for this subscription (only for subscription trips)
   const { data: carriedForwardRides } = useQuery({
     queryKey: ['carriedForwardRides', tripDetails?.subscription_id],
@@ -164,6 +188,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
   const currentVehicleId = tripDetails?.vehicle_id || ''
   const currentNotes = tripDetails?.notes || ''
   const currentFare = tripDetails?.fare || null
+  const currentEstKm = tripDetails?.est_km || null
+  const currentActualKm = tripDetails?.actual_km || null
   const currentPickupAt = tripDetails?.pickup_at || null
   const currentStartAt = tripDetails?.start_at || null
   const currentEndAt = tripDetails?.end_at || null
@@ -175,15 +201,33 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       setPendingVehicleId(currentVehicleId)
       setPendingNotes(currentNotes)
       setPendingFare(currentFare !== null ? (currentFare / 100).toString() : '')
+      setPendingEstKm(currentEstKm !== null ? currentEstKm.toString() : '')
+      setPendingActualKm(currentActualKm !== null ? currentActualKm.toString() : '')
       setPendingPickupAt(isoToDatetimeLocal(currentPickupAt))
       setPendingStartAt(isoToDatetimeLocal(currentStartAt))
       setPendingEndAt(isoToDatetimeLocal(currentEndAt))
+      // Initialize payment mode and comment from existing payment
+      if (existingPayment) {
+        // Map payment method to our dropdown values
+        const methodMap: Record<string, string> = {
+          'cash': 'Cash',
+          'upi': 'UPI',
+          'online': 'UPI',
+          'card': 'Others',
+          'others': 'Others',
+        }
+        setPendingPaymentMode(methodMap[existingPayment.method?.toLowerCase() || ''] || existingPayment.method || '')
+        setPendingPaymentComment(existingPayment.txn_ref || '')
+      } else {
+        setPendingPaymentMode('')
+        setPendingPaymentComment('')
+      }
       setSelectedStatus('')
       setCancelReason('')
       setCarryForward(false)
       setHasPendingChanges(false)
     }
-  }, [trip?.id, currentDriverId, currentVehicleId, currentNotes, currentFare, currentPickupAt, currentStartAt, currentEndAt])
+  }, [trip?.id, currentDriverId, currentVehicleId, currentNotes, currentFare, currentEstKm, currentActualKm, currentPickupAt, currentStartAt, currentEndAt, existingPayment])
 
   // Check if there are pending changes
   useEffect(() => {
@@ -196,8 +240,23 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     const startAtChanged = pendingStartAt !== isoToDatetimeLocal(currentStartAt)
     const endAtChanged = pendingEndAt !== isoToDatetimeLocal(currentEndAt)
     const statusChanged = selectedStatus !== ''
-    setHasPendingChanges(driverChanged || vehicleChanged || notesChanged || fareChanged || pickupAtChanged || startAtChanged || endAtChanged || statusChanged)
-  }, [trip?.id, pendingDriverId, pendingVehicleId, pendingNotes, pendingFare, pendingPickupAt, pendingStartAt, pendingEndAt, selectedStatus, currentDriverId, currentVehicleId, currentNotes, currentFare, currentPickupAt, currentStartAt, currentEndAt])
+    const estKmChanged = pendingEstKm !== (currentEstKm !== null ? currentEstKm.toString() : '')
+    const actualKmChanged = pendingActualKm !== (currentActualKm !== null ? currentActualKm.toString() : '')
+    const currentPaymentMode = existingPayment ? (() => {
+      const methodMap: Record<string, string> = {
+        'cash': 'Cash',
+        'upi': 'UPI',
+        'online': 'UPI',
+        'card': 'Others',
+        'others': 'Others',
+      }
+      return methodMap[existingPayment.method?.toLowerCase() || ''] || existingPayment.method || ''
+    })() : ''
+    const currentPaymentComment = existingPayment?.txn_ref || ''
+    const paymentModeChanged = pendingPaymentMode !== currentPaymentMode
+    const paymentCommentChanged = pendingPaymentComment !== currentPaymentComment
+    setHasPendingChanges(driverChanged || vehicleChanged || notesChanged || fareChanged || pickupAtChanged || startAtChanged || endAtChanged || statusChanged || estKmChanged || actualKmChanged || paymentModeChanged || paymentCommentChanged)
+  }, [trip?.id, pendingDriverId, pendingVehicleId, pendingNotes, pendingFare, pendingEstKm, pendingActualKm, pendingPickupAt, pendingStartAt, pendingEndAt, selectedStatus, pendingPaymentMode, pendingPaymentComment, currentDriverId, currentVehicleId, currentNotes, currentFare, currentEstKm, currentActualKm, currentPickupAt, currentStartAt, currentEndAt, existingPayment])
 
   // Assignment mutations (must be before any conditional returns)
   const assignDriver = useMutation({
@@ -412,6 +471,122 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     },
   })
 
+  const updatePayment = useMutation({
+    mutationFn: async (data: { paymentMode: string; paymentComment: string }) => {
+      if (!trip || !tripDetails?.customer_id) throw new Error('No trip or customer selected')
+
+      // Map dropdown values to database values
+      const methodMap: Record<string, string> = {
+        'Cash': 'cash',
+        'UPI': 'upi',
+        'Others': 'others',
+      }
+      const paymentMethod = methodMap[data.paymentMode] || data.paymentMode.toLowerCase()
+
+      // Only create/update payment if payment mode is selected
+      if (!data.paymentMode) {
+        // If payment mode is cleared, delete existing payment if any
+        if (existingPayment?.id) {
+          const { error } = await supabase
+            .from('payments')
+            .delete()
+            .eq('id', existingPayment.id)
+          if (error) throw error
+        }
+        return
+      }
+
+      const fareAmount = currentFare || (pendingFare ? parseFloat(pendingFare) * 100 : null)
+      
+      if (existingPayment?.id) {
+        // Update existing payment
+        const { error } = await supabase
+          .from('payments')
+          .update({
+            method: paymentMethod,
+            txn_ref: data.paymentComment || null,
+            amount: fareAmount || 0,
+            received_at: fareAmount ? new Date().toISOString() : null,
+            status: fareAmount ? 'completed' : 'pending',
+          })
+          .eq('id', existingPayment.id)
+        if (error) throw error
+      } else {
+        // Create new payment
+        const { error } = await supabase
+          .from('payments')
+          .insert({
+            customer_id: tripDetails.customer_id,
+            trip_id: trip.id,
+            method: paymentMethod,
+            txn_ref: data.paymentComment || null,
+            amount: fareAmount || 0,
+            received_at: fareAmount ? new Date().toISOString() : null,
+            status: fareAmount ? 'completed' : 'pending',
+          })
+        if (error) throw error
+      }
+    },
+    onSuccess: async () => {
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['tripPayment'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['tripDetails'], refetchType: 'active' }),
+      ])
+    },
+  })
+
+  const updateKms = useMutation({
+    mutationFn: async (data: { estKm: number | null; actualKm?: number | null }) => {
+      if (!trip) throw new Error('No trip selected')
+
+      const tableName = trip.type === TRIP_TYPES.SUBSCRIPTION
+        ? 'subscription_rides'
+        : trip.type === TRIP_TYPES.AIRPORT
+        ? 'airport_bookings'
+        : trip.type === TRIP_TYPES.RENTAL
+        ? 'rental_bookings'
+        : 'manual_rides'
+
+      const updateData: any = {
+        est_km: data.estKm,
+        updated_at: new Date().toISOString()
+      }
+
+      // Only update actual_km for subscription rides
+      if (trip.type === TRIP_TYPES.SUBSCRIPTION && data.actualKm !== undefined) {
+        updateData.actual_km = data.actualKm
+      }
+
+      const { error } = await supabase
+        .from(tableName)
+        .update(updateData)
+        .eq('id', trip.ref_id)
+
+      if (error) throw error
+    },
+    onSuccess: async () => {
+      // Invalidate queries first
+      queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' })
+      queryClient.invalidateQueries({ 
+        queryKey: ['todayMetrics'],
+        refetchType: 'active',
+        exact: false 
+      })
+      queryClient.invalidateQueries({ queryKey: ['tripDetails'], refetchType: 'active' })
+      
+      // Small delay to ensure database update is committed
+      await new Promise(resolve => setTimeout(resolve, 100))
+      
+      // Explicitly refetch allBookings to ensure dashboard updates immediately
+      await queryClient.refetchQueries({
+        predicate: (query) => query.queryKey[0] === 'allBookings',
+        type: 'active'
+      })
+    },
+  })
+
   // Early return if no trip (after all hooks are called)
   if (!trip) return null
 
@@ -454,6 +629,28 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
           return
         }
         await updateFare.mutateAsync(fareValue)
+      }
+
+      // Submit km changes
+      const estKmChanged = pendingEstKm !== (currentEstKm !== null ? currentEstKm.toString() : '')
+      const actualKmChanged = pendingActualKm !== (currentActualKm !== null ? currentActualKm.toString() : '')
+      if (estKmChanged || actualKmChanged) {
+        const estKmValue = pendingEstKm.trim() === '' ? null : parseFloat(pendingEstKm)
+        const actualKmValue = pendingActualKm.trim() === '' ? null : parseFloat(pendingActualKm)
+        
+        if (estKmValue !== null && (isNaN(estKmValue) || estKmValue < 0)) {
+          alert('Please enter a valid estimated km amount')
+          return
+        }
+        if (actualKmValue !== null && (isNaN(actualKmValue) || actualKmValue < 0)) {
+          alert('Please enter a valid actual km amount')
+          return
+        }
+        
+        await updateKms.mutateAsync({
+          estKm: estKmValue,
+          actualKm: trip.type === TRIP_TYPES.SUBSCRIPTION ? actualKmValue : undefined,
+        })
       }
 
       // Submit timing changes
@@ -500,14 +697,51 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
         setCarryForward(false)
       }
 
+      // Submit payment changes
+      const currentPaymentMode = existingPayment ? (() => {
+        const methodMap: Record<string, string> = {
+          'cash': 'Cash',
+          'upi': 'UPI',
+          'online': 'UPI',
+          'card': 'Others',
+          'others': 'Others',
+        }
+        return methodMap[existingPayment.method?.toLowerCase() || ''] || existingPayment.method || ''
+      })() : ''
+      const currentPaymentComment = existingPayment?.txn_ref || ''
+      const paymentModeChanged = pendingPaymentMode !== currentPaymentMode
+      const paymentCommentChanged = pendingPaymentComment !== currentPaymentComment
+      if (paymentModeChanged || paymentCommentChanged) {
+        await updatePayment.mutateAsync({
+          paymentMode: pendingPaymentMode,
+          paymentComment: pendingPaymentComment,
+        })
+      }
+
       // Reset pending changes
       setPendingDriverId(currentDriverId)
       setPendingVehicleId(currentVehicleId)
       setPendingNotes(currentNotes)
       setPendingFare(currentFare !== null ? (currentFare / 100).toString() : '')
+      setPendingEstKm(currentEstKm !== null ? currentEstKm.toString() : '')
+      setPendingActualKm(currentActualKm !== null ? currentActualKm.toString() : '')
       setPendingPickupAt(isoToDatetimeLocal(currentPickupAt))
       setPendingStartAt(isoToDatetimeLocal(currentStartAt))
       setPendingEndAt(isoToDatetimeLocal(currentEndAt))
+      if (existingPayment) {
+        const methodMap: Record<string, string> = {
+          'cash': 'Cash',
+          'upi': 'UPI',
+          'online': 'UPI',
+          'card': 'Others',
+          'others': 'Others',
+        }
+        setPendingPaymentMode(methodMap[existingPayment.method?.toLowerCase() || ''] || existingPayment.method || '')
+        setPendingPaymentComment(existingPayment.txn_ref || '')
+      } else {
+        setPendingPaymentMode('')
+        setPendingPaymentComment('')
+      }
       setHasPendingChanges(false)
       
       // Close the drawer after successful submission
@@ -618,6 +852,10 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
               <p className="text-text">{trip.customer_name || '-'}</p>
             </div>
             <div>
+              <label className="text-sm font-medium text-gray-500">Mobile</label>
+              <p className="text-text">{trip.customer_phone || '-'}</p>
+            </div>
+            <div>
               <label className="text-sm font-medium text-gray-500">Fare (₹)</label>
               <input
                 type="number"
@@ -630,6 +868,58 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
               {currentFare !== null && (
                 <p className="mt-1 text-xs text-gray-500">Current: {formatFare(currentFare)}</p>
               )}
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Estimated KM</label>
+              <input
+                type="number"
+                step="0.1"
+                value={pendingEstKm}
+                onChange={(e) => setPendingEstKm(e.target.value)}
+                placeholder="Enter estimated km"
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
+              />
+              {currentEstKm !== null && (
+                <p className="mt-1 text-xs text-gray-500">Current: {currentEstKm} km</p>
+              )}
+            </div>
+            {trip.type === TRIP_TYPES.SUBSCRIPTION && (
+              <div>
+                <label className="text-sm font-medium text-gray-500">Actual KM</label>
+                <input
+                  type="number"
+                  step="0.1"
+                  value={pendingActualKm}
+                  onChange={(e) => setPendingActualKm(e.target.value)}
+                  placeholder="Enter actual km"
+                  className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
+                />
+                {currentActualKm !== null && (
+                  <p className="mt-1 text-xs text-gray-500">Current: {currentActualKm} km</p>
+                )}
+              </div>
+            )}
+            <div>
+              <label className="text-sm font-medium text-gray-500">Mode of Payment</label>
+              <select
+                value={pendingPaymentMode}
+                onChange={(e) => setPendingPaymentMode(e.target.value)}
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
+              >
+                <option value="">Select payment mode...</option>
+                <option value="Cash">Cash</option>
+                <option value="UPI">UPI</option>
+                <option value="Others">Others</option>
+              </select>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-gray-500">Payment Comment</label>
+              <textarea
+                value={pendingPaymentComment}
+                onChange={(e) => setPendingPaymentComment(e.target.value)}
+                placeholder="Add payment comment..."
+                className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary min-h-[80px] text-text"
+              />
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">Hub/Route</label>
@@ -728,6 +1018,12 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                   {pendingNotes !== currentNotes && (
                     <li>• Notes will be updated</li>
                   )}
+                  {pendingEstKm !== (currentEstKm !== null ? currentEstKm.toString() : '') && (
+                    <li>• Estimated KM will be updated</li>
+                  )}
+                  {trip.type === TRIP_TYPES.SUBSCRIPTION && pendingActualKm !== (currentActualKm !== null ? currentActualKm.toString() : '') && (
+                    <li>• Actual KM will be updated</li>
+                  )}
                   {selectedStatus && (
                     <li>• Status will change to: {availableTransitions.find(t => t.to === selectedStatus)?.label}</li>
                   )}
@@ -735,10 +1031,10 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
               </div>
               <button
                 onClick={handleSubmitAllChanges}
-                disabled={assignDriver.isPending || assignVehicle.isPending || updateNotes.isPending || updateFare.isPending || updatePickupAt.isPending || updateRentalTiming.isPending || advanceStatus.isPending}
+                disabled={assignDriver.isPending || assignVehicle.isPending || updateNotes.isPending || updateFare.isPending || updateKms.isPending || updatePickupAt.isPending || updateRentalTiming.isPending || advanceStatus.isPending || updatePayment.isPending}
                 className="w-full bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
-                {(assignDriver.isPending || assignVehicle.isPending || updateNotes.isPending || updateFare.isPending || updatePickupAt.isPending || updateRentalTiming.isPending || advanceStatus.isPending) ? (
+                {(assignDriver.isPending || assignVehicle.isPending || updateNotes.isPending || updateFare.isPending || updateKms.isPending || updatePickupAt.isPending || updateRentalTiming.isPending || advanceStatus.isPending || updatePayment.isPending) ? (
                   <>
                     <svg className="animate-spin h-5 w-5" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                       <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>

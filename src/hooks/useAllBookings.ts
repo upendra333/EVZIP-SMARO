@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { TripListItem } from './useTodayTrips'
 import { TRIP_STATUSES } from '../utils/constants'
+import { useOperator } from './useOperator'
 
 export function useAllBookings(filters?: {
   type?: string
@@ -14,11 +15,18 @@ export function useAllBookings(filters?: {
   dueNext60Min?: boolean
   dueToday?: boolean
   dueTomorrow?: boolean
+  includePastIncomplete?: boolean // For managers/admins to see incomplete past trips older than 1 day
+  includeYesterdayIncomplete?: boolean // Show incomplete trips from yesterday (default: true for Dashboard)
 }) {
+  const { isManager, isAdmin } = useOperator()
+  
   return useQuery({
     queryKey: ['allBookings', filters],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0]
+      const canViewPastIncomplete = isManager() || isAdmin() || filters?.includePastIncomplete
+      // Default to showing yesterday's incomplete trips unless explicitly disabled
+      const showYesterdayIncomplete = filters?.includeYesterdayIncomplete !== false
       
       // Build base query - fetch trips first without nested joins
       let tripsQuery = supabase
@@ -66,7 +74,7 @@ export function useAllBookings(filters?: {
                 drivers(name),
                 vehicles(reg_no),
                 subscriptions(
-                  customers(name),
+                  customers(name, phone),
                   pickup,
                   drop,
                   hub_id,
@@ -87,7 +95,7 @@ export function useAllBookings(filters?: {
                 est_km,
                 drivers(name),
                 vehicles(reg_no),
-                customers(name),
+                customers(name, phone),
                 pickup,
                 drop,
                 hub_id,
@@ -102,6 +110,8 @@ export function useAllBookings(filters?: {
               .select(`
                 id,
                 start_at,
+                pickup,
+                drop,
                 fare,
                 est_km,
                 drivers(name),
@@ -208,13 +218,15 @@ export function useAllBookings(filters?: {
               hub_name: hubName,
               route: route,
               customer_name: sr.subscriptions?.customers?.name || null,
+              customer_phone: sr.subscriptions?.customers?.phone || null,
               driver_name: sr.drivers?.name || null,
               vehicle_reg: sr.vehicles?.reg_no || null,
               status: trip.status,
               fare: sr.fare,
               ref_id: trip.ref_id,
-              est_km: sr.est_km || sr.subscriptions?.distance_km || null,
-              actual_km: sr.actual_km || null,
+              // Use est_km from subscription_rides, fallback to subscription distance_km only if est_km is null/undefined
+              est_km: sr.est_km ?? sr.subscriptions?.distance_km ?? null,
+              actual_km: sr.actual_km ?? null,
             }
           }
         } else if (trip.type === 'airport') {
@@ -231,6 +243,7 @@ export function useAllBookings(filters?: {
               hub_name: hubName,
               route: route,
               customer_name: ab.customers?.name || null,
+              customer_phone: ab.customers?.phone || null,
               driver_name: ab.drivers?.name || null,
               vehicle_reg: ab.vehicles?.reg_no || null,
               status: trip.status,
@@ -244,15 +257,17 @@ export function useAllBookings(filters?: {
           const rb = rentalMap[trip.ref_id]
           if (rb) {
             const hubName = rb.hubs?.name || null
+            const route = (rb.pickup && rb.drop) ? `${rb.pickup} → ${rb.drop}` : null
             return {
               id: trip.id,
               type: 'rental',
               created_at: trip.created_at,
               start_time: rb.start_at,
-              hub_route: hubName, // Keep for backward compatibility
+              hub_route: hubName || route, // Keep for backward compatibility
               hub_name: hubName,
-              route: null, // Rentals don't have pickup/drop route
+              route: route,
               customer_name: rb.customers?.name || null,
+              customer_phone: rb.customers?.phone || null,
               driver_name: rb.drivers?.name || null,
               vehicle_reg: rb.vehicles?.reg_no || null,
               status: trip.status,
@@ -276,6 +291,7 @@ export function useAllBookings(filters?: {
               hub_name: hubName,
               route: route,
               customer_name: mr.customers?.name || null,
+              customer_phone: mr.customers?.phone || null,
               driver_name: mr.drivers?.name || null,
               vehicle_reg: mr.vehicles?.reg_no || null,
               status: trip.status,
@@ -296,6 +312,7 @@ export function useAllBookings(filters?: {
           hub_name: null,
           route: null,
           customer_name: null,
+          customer_phone: null,
           driver_name: null,
           vehicle_reg: null,
           status: trip.status,
@@ -310,11 +327,51 @@ export function useAllBookings(filters?: {
       let filteredTrips = trips
       
       // Filter by booking date (today and future) if no date range specified
+      // Exception: Show incomplete trips from yesterday for all users
+      // Exception: Managers/Admins can see incomplete trips older than 1 day if includePastIncomplete is true
       if (!filters?.dateFrom && !filters?.dateTo) {
+        const yesterday = new Date()
+        yesterday.setDate(yesterday.getDate() - 1)
+        const yesterdayStr = yesterday.toISOString().split('T')[0]
+        
         filteredTrips = filteredTrips.filter((t) => {
           if (!t.start_time) return false
           const tripDate = new Date(t.start_time).toISOString().split('T')[0]
-          return tripDate >= today
+          
+          // If trip is today or future, always show
+          if (tripDate >= today) {
+            return true
+          }
+          
+          // If trip is from yesterday
+          if (tripDate === yesterdayStr) {
+            // Show incomplete trips from yesterday if enabled (default: true for Dashboard)
+            if (showYesterdayIncomplete) {
+              const incompleteStatuses = [
+                TRIP_STATUSES.CREATED,
+                TRIP_STATUSES.ASSIGNED,
+                TRIP_STATUSES.ENROUTE
+              ]
+              return incompleteStatuses.includes(t.status)
+            }
+            return false
+          }
+          
+          // If trip is older than yesterday
+          if (tripDate < yesterdayStr) {
+            // Only show if manager/admin and includePastIncomplete is true
+            if (canViewPastIncomplete) {
+              const incompleteStatuses = [
+                TRIP_STATUSES.CREATED,
+                TRIP_STATUSES.ASSIGNED,
+                TRIP_STATUSES.ENROUTE
+              ]
+              return incompleteStatuses.includes(t.status)
+            }
+            return false
+          }
+          
+          return false
         })
       }
       

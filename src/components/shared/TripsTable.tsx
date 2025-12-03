@@ -226,6 +226,9 @@ export function TripsTable({ trips, onRowClick, isLoading }: TripsTableProps) {
                   <SortIcon column="customer_name" />
                 </div>
               </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Mobile
+              </th>
               <th 
                 onClick={() => handleSort('driver_name')}
                 className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-100 select-none"
@@ -265,17 +268,36 @@ export function TripsTable({ trips, onRowClick, isLoading }: TripsTableProps) {
             </tr>
           </thead>
           <tbody className="bg-white divide-y divide-gray-200">
-            {sortedTrips.map((trip) => (
+            {sortedTrips.map((trip) => {
+              // Check if trip is from yesterday and incomplete
+              const startTime = trip.start_time ? new Date(trip.start_time) : null
+              const yesterday = new Date()
+              yesterday.setDate(yesterday.getDate() - 1)
+              yesterday.setHours(0, 0, 0, 0)
+              const yesterdayEnd = new Date(yesterday)
+              yesterdayEnd.setHours(23, 59, 59, 999)
+              const isYesterday = startTime && startTime >= yesterday && startTime <= yesterdayEnd
+              const isIncomplete = ['created', 'assigned', 'enroute'].includes(trip.status)
+              const isYesterdayIncomplete = isYesterday && isIncomplete
+              
+              return (
               <tr
                 key={trip.id}
                 onClick={() => onRowClick?.(trip)}
-                className={onRowClick ? 'hover:bg-gray-50 cursor-pointer transition-colors' : ''}
+                className={`${onRowClick ? 'hover:bg-gray-50 cursor-pointer transition-colors' : ''} ${isYesterdayIncomplete ? 'bg-yellow-50' : ''}`}
               >
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {formatTime(trip.created_at)}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                  {formatTime(trip.start_time)}
+                  <div className="flex items-center gap-2">
+                    {formatTime(trip.start_time)}
+                    {isYesterdayIncomplete && (
+                      <span className="px-2 py-0.5 rounded text-xs bg-yellow-200 text-yellow-800 font-medium" title="Incomplete trip from yesterday">
+                        Yesterday
+                      </span>
+                    )}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {getTypeLabel(trip.type)}
@@ -288,6 +310,9 @@ export function TripsTable({ trips, onRowClick, isLoading }: TripsTableProps) {
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {trip.customer_name || '-'}
+                </td>
+                <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                  {trip.customer_phone || '-'}
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {trip.driver_name || '-'}
@@ -302,7 +327,8 @@ export function TripsTable({ trips, onRowClick, isLoading }: TripsTableProps) {
                   {formatFare(trip.fare)}
                 </td>
               </tr>
-            ))}
+              )
+            })}
           </tbody>
         </table>
       </div>

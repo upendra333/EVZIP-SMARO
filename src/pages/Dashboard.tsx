@@ -21,13 +21,15 @@ export function Dashboard() {
   const [showAddDropdown, setShowAddDropdown] = useState(false)
   const [createModalType, setCreateModalType] = useState<'airport' | 'subscription_booking' | 'rental' | 'manual' | null>(null)
 
-  const { can } = useOperator()
+  const { can, isManager, isAdmin } = useOperator()
   const { error: metricsError } = useTodayMetrics() // Keep for error display
   
   // Fetch all bookings for stats calculation (no filters)
+  // Will automatically show incomplete trips from yesterday for all users
   const { data: allBookingsForStats } = useAllBookings({})
   
   // Fetch filtered bookings for table display
+  // Will automatically show incomplete trips from yesterday for all users
   const { data: bookings, isLoading: bookingsLoading } = useAllBookings({
     type: filters.type,
     status: filters.status,
@@ -36,6 +38,8 @@ export function Dashboard() {
     dueNext60Min: filters.dueNext60Min,
     dueToday: filters.dueToday,
     dueTomorrow: filters.dueTomorrow,
+    // Don't pass includePastIncomplete - will show yesterday's incomplete trips for all users
+    // Older trips will only show in Data Management for managers/admins
   })
   const dropdownRef = useRef<HTMLDivElement>(null)
 
@@ -149,8 +153,14 @@ export function Dashboard() {
           totalRevenueToday += booking.fare
         }
         // Add KM (use actual_km if available, otherwise est_km)
-        const km = booking.actual_km || booking.est_km || 0
-        totalKmToday += Number(km)
+        // Use nullish coalescing to properly handle 0 values (only fallback on null/undefined)
+        const km = booking.actual_km ?? booking.est_km ?? 0
+        // Convert to number, handling string values and null/undefined
+        const kmValue = typeof km === 'number' ? km : (typeof km === 'string' ? parseFloat(km) || 0 : 0)
+        if (isNaN(kmValue)) {
+          console.warn('Invalid km value for booking:', booking.id, 'km:', km)
+        }
+        totalKmToday += kmValue
       }
 
       // Bookings Overview - show trips based on start time, excluding cancelled/no-show

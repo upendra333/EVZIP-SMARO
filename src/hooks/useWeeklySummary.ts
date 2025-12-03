@@ -6,14 +6,25 @@ export interface WeeklySummaryRow {
   week_end: string
   total_rides: number
   total_revenue: number
+  total_km?: number
   subscription_count: number
   subscription_revenue: number
+  subscription_km?: number
   airport_count: number
   airport_revenue: number
+  airport_km?: number
   rental_count: number
   rental_revenue: number
+  rental_km?: number
   manual_count?: number
   manual_revenue?: number
+  manual_km?: number
+  cash_revenue?: number
+  upi_revenue?: number
+  others_revenue?: number
+  cash_count?: number
+  upi_count?: number
+  others_count?: number
 }
 
 export function useWeeklySummary(fromDate: string, toDate: string, hubId?: string | null) {

@@ -65,6 +65,9 @@ export function RentalBookingsTable({ bookings, onRowClick, isLoading }: RentalB
                 Customer
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Route
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Driver
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -96,6 +99,11 @@ export function RentalBookingsTable({ bookings, onRowClick, isLoading }: RentalB
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {booking.customer?.name || '-'}
+                </td>
+                <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
+                  <div className="truncate">
+                    {booking.pickup && booking.drop ? `${booking.pickup} → ${booking.drop}` : '-'}
+                  </div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                   {booking.driver?.name || '-'}

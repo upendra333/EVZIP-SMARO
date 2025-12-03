@@ -23,6 +23,9 @@ export const PERMISSIONS = {
   VIEW_REPORTS: 'view_reports',
   EXPORT_REPORTS: 'export_reports',
   
+  // Analytics
+  VIEW_ANALYTICS: 'view_analytics',
+  
   // Data Management
   VIEW_CUSTOMERS: 'view_customers',
   CREATE_CUSTOMER: 'create_customer',
@@ -90,6 +93,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.CANCEL_BOOKING,
     PERMISSIONS.VIEW_REPORTS,
     PERMISSIONS.EXPORT_REPORTS,
+    PERMISSIONS.VIEW_ANALYTICS,
     PERMISSIONS.VIEW_CUSTOMERS,
     PERMISSIONS.CREATE_CUSTOMER,
     PERMISSIONS.EDIT_CUSTOMER,
@@ -117,6 +121,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
     PERMISSIONS.CANCEL_BOOKING,
     PERMISSIONS.VIEW_REPORTS,
     PERMISSIONS.EXPORT_REPORTS,
+    PERMISSIONS.VIEW_ANALYTICS,
     PERMISSIONS.VIEW_CUSTOMERS,
     PERMISSIONS.CREATE_CUSTOMER,
     PERMISSIONS.EDIT_CUSTOMER,
@@ -150,14 +155,34 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
 }
 
 // Helper function to check if a role has a permission
+// This function uses hardcoded permissions as fallback
+// The actual permission checking should use useRolePermissions hook for database-backed permissions
 export function hasPermission(role: Role, permission: Permission): boolean {
   const rolePerms = ROLE_PERMISSIONS[role] || []
   return rolePerms.includes(permission)
 }
 
 // Get all permissions for a role
+// This function uses hardcoded permissions as fallback
+// The actual permission retrieval should use useRolePermissions hook for database-backed permissions
 export function getRolePermissions(role: Role): Permission[] {
   return ROLE_PERMISSIONS[role] || []
+}
+
+// Helper function to check permission with database-backed permissions
+// This should be used in components that have access to React Query
+export function checkPermissionWithDB(
+  role: Role,
+  permission: Permission,
+  dbPermissions: Record<Role, Permission[]> | null | undefined
+): boolean {
+  // If database permissions are available, use them
+  if (dbPermissions && dbPermissions[role]) {
+    return dbPermissions[role].includes(permission)
+  }
+  
+  // Fallback to hardcoded permissions
+  return hasPermission(role, permission)
 }
 
 // Get human-readable permission labels
@@ -175,6 +200,7 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
   [PERMISSIONS.CANCEL_BOOKING]: 'Cancel Booking',
   [PERMISSIONS.VIEW_REPORTS]: 'View Reports',
   [PERMISSIONS.EXPORT_REPORTS]: 'Export Reports',
+  [PERMISSIONS.VIEW_ANALYTICS]: 'View Analytics',
   [PERMISSIONS.VIEW_CUSTOMERS]: 'View Customers',
   [PERMISSIONS.CREATE_CUSTOMER]: 'Create Customer',
   [PERMISSIONS.EDIT_CUSTOMER]: 'Edit Customer',
@@ -230,6 +256,9 @@ export const PERMISSION_CATEGORIES = {
   Reports: [
     PERMISSIONS.VIEW_REPORTS,
     PERMISSIONS.EXPORT_REPORTS,
+  ],
+  Analytics: [
+    PERMISSIONS.VIEW_ANALYTICS,
   ],
   Customers: [
     PERMISSIONS.VIEW_CUSTOMERS,

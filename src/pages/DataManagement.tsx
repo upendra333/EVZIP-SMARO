@@ -17,6 +17,8 @@ import { useDeleteRide } from '../hooks/useDeleteRide'
 import { useNavigate } from 'react-router-dom'
 import { ROUTES } from '../utils/constants'
 import { CustomerNameAutocomplete } from '../components/shared/CustomerNameAutocomplete'
+import { TripDrawer } from '../components/shared/TripDrawer'
+import type { TripListItem } from '../hooks/useTodayTrips'
 
 type TabType = 'customers' | 'subscriptions' | 'drivers' | 'vehicles' | 'hubs' | 'rides'
 
@@ -2009,10 +2011,15 @@ function AddHubForm({
 
 // Rides Tab
 function RidesTab() {
-  const { data: bookings, isLoading } = useAllBookings()
-  const { can } = useOperator()
+  const { can, isManager, isAdmin } = useOperator()
+  const [showPastIncomplete, setShowPastIncomplete] = useState(false)
+  const [selectedTrip, setSelectedTrip] = useState<TripListItem | null>(null)
+  const [drawerOpen, setDrawerOpen] = useState(false)
+  const { data: bookings, isLoading } = useAllBookings({
+    includePastIncomplete: (isManager() || isAdmin()) && showPastIncomplete,
+    includeYesterdayIncomplete: false // Don't show yesterday's incomplete trips here (only in Dashboard)
+  })
   const deleteMutation = useDeleteRide()
-  const navigate = useNavigate()
 
   const handleDelete = async (rideId: string, rideType: 'subscription' | 'airport' | 'rental' | 'manual') => {
     if (!confirm('Are you sure you want to delete this ride? This action cannot be undone.')) return
@@ -2024,20 +2031,35 @@ function RidesTab() {
     }
   }
 
-  const handleEdit = () => {
-    // Navigate to dashboard where user can click on the trip to edit
-    navigate(ROUTES.DASHBOARD)
+  const handleEdit = (booking: TripListItem) => {
+    setSelectedTrip(booking)
+    setDrawerOpen(true)
   }
 
   const canEdit = can(PERMISSIONS.EDIT_RIDE)
   const canDelete = can(PERMISSIONS.DELETE_RIDE)
   const showActions = canEdit || canDelete
 
+  const canViewPastIncomplete = isManager() || isAdmin()
+
   return (
     <div>
-      <div className="mb-4">
-        <h2 className="text-lg font-semibold">All Rides</h2>
-        <p className="text-sm text-gray-600 mt-1">View all bookings (Subscription, Airport, Rental, Manual)</p>
+      <div className="mb-4 flex justify-between items-center">
+        <div>
+          <h2 className="text-lg font-semibold">All Rides</h2>
+          <p className="text-sm text-gray-600 mt-1">View all bookings (Subscription, Airport, Rental, Manual)</p>
+        </div>
+        {canViewPastIncomplete && (
+          <label className="flex items-center space-x-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showPastIncomplete}
+              onChange={(e) => setShowPastIncomplete(e.target.checked)}
+              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+            />
+            <span className="text-sm text-gray-700">Show incomplete trips older than 1 day</span>
+          </label>
+        )}
       </div>
 
       {isLoading ? (
@@ -2050,6 +2072,7 @@ function RidesTab() {
                 <tr>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Time</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hub</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Driver</th>
@@ -2062,14 +2085,26 @@ function RidesTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {bookings?.slice(0, 100).map((booking) => (
-                  <tr key={booking.id}>
+                {bookings?.slice(0, 100).map((booking) => {
+                  const startTime = booking.start_time ? new Date(booking.start_time) : null
+                  const isPast = startTime && startTime < new Date()
+                  const isIncomplete = ['created', 'assigned', 'enroute'].includes(booking.status)
+                  const isPastIncomplete = isPast && isIncomplete
+                  
+                  return (
+                  <tr key={booking.id} className={isPastIncomplete ? 'bg-yellow-50' : ''}>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">
                         {booking.type}
                       </span>
+                      {isPastIncomplete && (
+                        <span className="ml-2 px-2 py-1 rounded text-xs bg-yellow-200 text-yellow-800" title="Past incomplete trip">
+                          Past
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-900">{booking.customer_name || '-'}</td>
+                    <td className="px-4 py-3 text-sm text-gray-600">{booking.customer_phone || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">
                       {booking.start_time ? new Date(booking.start_time).toLocaleString() : '-'}
                     </td>
@@ -2094,7 +2129,7 @@ function RidesTab() {
                       <td className="px-4 py-3 text-right text-sm">
                         {canEdit && (
                           <button
-                            onClick={handleEdit}
+                            onClick={() => handleEdit(booking)}
                             className="text-primary hover:text-primary/80 mr-3"
                           >
                             Edit
@@ -2114,7 +2149,8 @@ function RidesTab() {
                       </td>
                     )}
                   </tr>
-                ))}
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -2128,6 +2164,16 @@ function RidesTab() {
           )}
         </div>
       )}
+      
+      {/* Trip Drawer */}
+      <TripDrawer
+        trip={selectedTrip}
+        isOpen={drawerOpen}
+        onClose={() => {
+          setDrawerOpen(false)
+          setSelectedTrip(null)
+        }}
+      />
     </div>
   )
 }

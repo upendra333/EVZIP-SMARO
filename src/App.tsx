@@ -2,6 +2,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from './components/layout/Layout'
 import { Dashboard } from './pages/Dashboard'
 import { Reports } from './pages/Reports'
+import { Analytics } from './pages/Analytics'
 import { Imports } from './pages/Imports'
 import { Audit } from './pages/Audit'
 import { DataManagement } from './pages/DataManagement'
@@ -44,6 +45,14 @@ function App() {
             element={
               <ProtectedRoute permission={PERMISSIONS.VIEW_REPORTS}>
                 <Reports />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path={ROUTES.ANALYTICS} 
+            element={
+              <ProtectedRoute permission={PERMISSIONS.VIEW_ANALYTICS}>
+                <Analytics />
               </ProtectedRoute>
             } 
           />

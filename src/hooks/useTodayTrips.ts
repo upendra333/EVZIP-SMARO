@@ -10,6 +10,7 @@ export interface TripListItem {
   hub_name: string | null // New: separate hub name
   route: string | null // New: separate route (pickup → drop)
   customer_name: string | null
+  customer_phone: string | null
   driver_name: string | null
   vehicle_reg: string | null
   status: string
@@ -47,7 +48,7 @@ export function useTodayTrips(filters?: {
             drivers(name),
             vehicles(reg_no),
             subscriptions(
-              customers(name),
+              customers(name, phone),
               pickup,
               drop,
               hub_id,
@@ -59,7 +60,7 @@ export function useTodayTrips(filters?: {
             fare,
             drivers(name),
             vehicles(reg_no),
-            customers(name),
+            customers(name, phone),
             pickup,
             drop,
             hub_id,
@@ -70,7 +71,7 @@ export function useTodayTrips(filters?: {
             fare,
             drivers(name),
             vehicles(reg_no),
-            customers(name),
+            customers(name, phone),
             hub_id,
             hubs(name)
           )
@@ -105,6 +106,7 @@ export function useTodayTrips(filters?: {
             hub_name: hubName,
             route: route,
             customer_name: sr.subscriptions?.customers?.name || null,
+            customer_phone: sr.subscriptions?.customers?.phone || null,
             driver_name: sr.drivers?.name || null,
             vehicle_reg: sr.vehicles?.reg_no || null,
             status: trip.status,
@@ -124,6 +126,7 @@ export function useTodayTrips(filters?: {
             hub_name: hubName,
             route: route,
             customer_name: ab.customers?.name || null,
+            customer_phone: ab.customers?.phone || null,
             driver_name: ab.drivers?.name || null,
             vehicle_reg: ab.vehicles?.reg_no || null,
             status: trip.status,
@@ -142,6 +145,7 @@ export function useTodayTrips(filters?: {
             hub_name: hubName,
             route: null, // Rentals don't have pickup/drop route
             customer_name: rb.customers?.name || null,
+            customer_phone: rb.customers?.phone || null,
             driver_name: rb.drivers?.name || null,
             vehicle_reg: rb.vehicles?.reg_no || null,
             status: trip.status,
@@ -158,6 +162,7 @@ export function useTodayTrips(filters?: {
           hub_name: null,
           route: null,
           customer_name: null,
+          customer_phone: null,
           driver_name: null,
           vehicle_reg: null,
           status: trip.status,

@@ -13,6 +13,7 @@ export const ROUTES = {
   AIRPORT: '/airport',
   RENTALS: '/rentals',
   REPORTS: '/reports',
+  ANALYTICS: '/analytics',
   IMPORTS: '/imports',
   AUDIT: '/audit',
   DATA_MANAGEMENT: '/data-management',
@@ -24,6 +25,7 @@ export const ROUTES = {
 export const NAVIGATION_ITEMS = [
   { name: 'Dashboard', path: ROUTES.DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_DASHBOARD },
   { name: 'Reports', path: ROUTES.REPORTS, icon: '📈', permission: PERMISSIONS.VIEW_REPORTS },
+  { name: 'Analytics', path: ROUTES.ANALYTICS, icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
   { name: 'Data Management', path: ROUTES.DATA_MANAGEMENT, icon: '🗂️', permission: PERMISSIONS.VIEW_CUSTOMERS },
   { name: 'Imports', path: ROUTES.IMPORTS, icon: '📥', permission: PERMISSIONS.VIEW_IMPORTS },
   { name: 'Audit', path: ROUTES.AUDIT, icon: '📋', permission: PERMISSIONS.VIEW_AUDIT },
