@@ -24,7 +24,9 @@ export function useAllBookings(filters?: {
     queryKey: ['allBookings', filters],
     queryFn: async () => {
       const today = new Date().toISOString().split('T')[0]
-      const canViewPastIncomplete = isManager() || isAdmin() || filters?.includePastIncomplete
+      // Only allow viewing past incomplete trips (older than 1 day) if explicitly requested
+      // Managers/admins can still access this via Data Management with the toggle
+      const canViewPastIncomplete = filters?.includePastIncomplete === true
       // Default to showing yesterday's incomplete trips unless explicitly disabled
       const showYesterdayIncomplete = filters?.includeYesterdayIncomplete !== false
       
@@ -116,7 +118,7 @@ export function useAllBookings(filters?: {
                 est_km,
                 drivers(name),
                 vehicles(reg_no),
-                customers(name),
+                customers(name, phone),
                 hub_id,
                 hubs(name)
               `)
@@ -135,7 +137,7 @@ export function useAllBookings(filters?: {
                 drop,
                 drivers(name),
                 vehicles(reg_no),
-                customers(name),
+                customers(name, phone),
                 hub_id,
                 hubs(name)
               `)
@@ -327,8 +329,8 @@ export function useAllBookings(filters?: {
       let filteredTrips = trips
       
       // Filter by booking date (today and future) if no date range specified
-      // Exception: Show incomplete trips from yesterday for all users
-      // Exception: Managers/Admins can see incomplete trips older than 1 day if includePastIncomplete is true
+      // Exception: Show incomplete trips from yesterday for all users (1 day old only)
+      // Exception: Trips older than 1 day are only shown if includePastIncomplete is explicitly set to true
       if (!filters?.dateFrom && !filters?.dateTo) {
         const yesterday = new Date()
         yesterday.setDate(yesterday.getDate() - 1)
