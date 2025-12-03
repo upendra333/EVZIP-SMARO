@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import type { Operator, Role } from '../utils/types'
-import { hasPermission as checkPermission, getRolePermissions, checkPermissionWithDB, type Permission } from '../utils/permissions'
+import { getRolePermissions, checkPermissionWithDB, type Permission } from '../utils/permissions'
 import type { User } from './useAuth'
 import { useRolePermissions } from './useRolePermissions'
 

@@ -69,14 +69,14 @@ export function Analytics() {
   // Fetch summary data
   const { data: dailyData, isLoading: dailyLoading } = useDailySummary(fromDate, toDate, hubId)
   const { data: weeklyData, isLoading: weeklyLoading } = useWeeklySummary(fromDate, toDate, hubId)
-  const { data: allBookings, isLoading: bookingsLoading } = useAllBookings({
+  const { data: allBookings } = useAllBookings({
     dateFrom: fromDate,
     dateTo: toDate,
     hub: selectedHub || undefined,
   })
 
-  // Fetch payment details for all bookings
-  const { data: paymentDetails } = useQuery({
+  // Fetch payment details for all bookings (for future use)
+  const { data: _paymentDetails } = useQuery({
     queryKey: ['paymentDetails', fromDate, toDate, hubId],
     queryFn: async () => {
       if (!allBookings || allBookings.length === 0) return {}
@@ -112,7 +112,7 @@ export function Analytics() {
     if (!summaryData) return []
     return summaryData.map((row) => ({
       date: viewType === 'daily' 
-        ? new Date(row.report_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+        ? new Date((row as any).report_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
         : `${new Date((row as any).week_start).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} - ${new Date((row as any).week_end).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`,
       total: (row.total_revenue || 0) / 100,
       subscription: (row.subscription_revenue || 0) / 100,
@@ -126,7 +126,7 @@ export function Analytics() {
     if (!summaryData) return []
     return summaryData.map((row) => ({
       date: viewType === 'daily' 
-        ? new Date(row.report_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+        ? new Date((row as any).report_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
         : `${new Date((row as any).week_start).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} - ${new Date((row as any).week_end).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`,
       total: row.total_rides || 0,
       subscription: row.subscription_count || 0,
@@ -178,8 +178,8 @@ export function Analytics() {
     const hubStats: Record<string, { revenue: number; trips: number; km: number }> = {}
     
     allBookings.forEach((booking) => {
-      const hubId = booking.hub_id || 'unknown'
       const hubName = booking.hub_name || 'Unknown'
+      const hubId = hubs.find((h) => h.name === hubName)?.id || hubName
       
       if (!hubStats[hubId]) {
         hubStats[hubId] = { revenue: 0, trips: 0, km: 0 }
@@ -192,7 +192,7 @@ export function Analytics() {
     
     return Object.entries(hubStats)
       .map(([id, stats]) => ({
-        name: hubs.find((h) => h.id === id)?.name || 'Unknown',
+        name: hubs.find((h) => h.id === id)?.name || hubs.find((h) => h.name === id)?.name || 'Unknown',
         revenue: stats.revenue / 100,
         trips: stats.trips,
         km: stats.km,
@@ -204,7 +204,7 @@ export function Analytics() {
     if (!summaryData) return []
     return summaryData.map((row) => ({
       date: viewType === 'daily' 
-        ? new Date(row.report_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
+        ? new Date((row as any).report_date).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })
         : `${new Date((row as any).week_start).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })} - ${new Date((row as any).week_end).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}`,
       total: Number(row.total_km || 0),
       subscription: Number(row.subscription_km || 0),
@@ -487,12 +487,12 @@ export function Analytics() {
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                    label={({ name, percent }) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}
                     outerRadius={100}
                     fill="#8884d8"
                     dataKey="value"
                   >
-                    {paymentModeData.map((entry, index) => (
+                    {paymentModeData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                     ))}
                   </Pie>

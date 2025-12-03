@@ -42,6 +42,7 @@ export function Airport() {
         hub_name: selectedBooking.hub?.name || null,
         route: `${selectedBooking.pickup} → ${selectedBooking.drop}`,
         customer_name: selectedBooking.customer?.name || null,
+        customer_phone: selectedBooking.customer?.phone || null,
         driver_name: selectedBooking.driver?.name || null,
         vehicle_reg: selectedBooking.vehicle?.reg_no || null,
         status: selectedBooking.status,

@@ -352,7 +352,7 @@ export function useAllBookings(filters?: {
                 TRIP_STATUSES.ASSIGNED,
                 TRIP_STATUSES.ENROUTE
               ]
-              return incompleteStatuses.includes(t.status)
+              return incompleteStatuses.includes(t.status as any)
             }
             return false
           }
@@ -366,7 +366,7 @@ export function useAllBookings(filters?: {
                 TRIP_STATUSES.ASSIGNED,
                 TRIP_STATUSES.ENROUTE
               ]
-              return incompleteStatuses.includes(t.status)
+              return incompleteStatuses.includes(t.status as any)
             }
             return false
           }

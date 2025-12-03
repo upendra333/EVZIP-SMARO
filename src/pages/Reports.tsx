@@ -981,7 +981,7 @@ export function Reports() {
       }
     })
     // Calculate average fare for each day
-    dailyRevenueTrend.forEach((value, date) => {
+    dailyRevenueTrend.forEach((value) => {
       value.avgFare = value.trips > 0 ? value.revenue / value.trips : 0
     })
 
@@ -999,7 +999,7 @@ export function Reports() {
         weeklyRevenueTrend.set(weekKey, current)
       }
     })
-    weeklyRevenueTrend.forEach((value, weekKey) => {
+    weeklyRevenueTrend.forEach((value) => {
       value.avgFare = value.trips > 0 ? value.revenue / value.trips : 0
     })
 
@@ -1015,7 +1015,7 @@ export function Reports() {
         monthlyRevenueTrend.set(monthKey, current)
       }
     })
-    monthlyRevenueTrend.forEach((value, monthKey) => {
+    monthlyRevenueTrend.forEach((value) => {
       value.avgFare = value.trips > 0 ? value.revenue / value.trips : 0
     })
 
@@ -1198,9 +1198,6 @@ export function Reports() {
     if (!paymentModeData || paymentModeData.length === 0) {
       return null
     }
-
-    const totalTrips = paymentModeData.length
-    const completedTrips = paymentModeData.filter(t => t.status === 'completed').length
 
     // Revenue by payment mode
     const revenueByMode = { cash: 0, upi: 0, others: 0 }

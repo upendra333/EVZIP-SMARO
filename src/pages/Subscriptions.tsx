@@ -40,6 +40,7 @@ export function Subscriptions() {
         hub_name: selectedRide.subscription?.hub?.name || null,
         route: selectedRide.subscription ? `${selectedRide.subscription.pickup} → ${selectedRide.subscription.drop}` : null,
         customer_name: selectedRide.subscription?.customer?.name || null,
+        customer_phone: selectedRide.subscription?.customer?.phone || null,
         driver_name: selectedRide.driver?.name || null,
         vehicle_reg: selectedRide.vehicle?.reg_no || null,
         status: selectedRide.status,

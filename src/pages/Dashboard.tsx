@@ -21,7 +21,7 @@ export function Dashboard() {
   const [showAddDropdown, setShowAddDropdown] = useState(false)
   const [createModalType, setCreateModalType] = useState<'airport' | 'subscription_booking' | 'rental' | 'manual' | null>(null)
 
-  const { can, isManager, isAdmin } = useOperator()
+  const { can } = useOperator()
   const { error: metricsError } = useTodayMetrics() // Keep for error display
   
   // Fetch all bookings for stats calculation (no filters)

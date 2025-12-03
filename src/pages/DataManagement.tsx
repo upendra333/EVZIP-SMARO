@@ -14,8 +14,6 @@ import { useCreateHub, useUpdateHub, useDeleteHub } from '../hooks/useManageHubs
 import { useOperator } from '../hooks/useOperator'
 import { PERMISSIONS, type Permission } from '../utils/permissions'
 import { useDeleteRide } from '../hooks/useDeleteRide'
-import { useNavigate } from 'react-router-dom'
-import { ROUTES } from '../utils/constants'
 import { CustomerNameAutocomplete } from '../components/shared/CustomerNameAutocomplete'
 import { TripDrawer } from '../components/shared/TripDrawer'
 import type { TripListItem } from '../hooks/useTodayTrips'
