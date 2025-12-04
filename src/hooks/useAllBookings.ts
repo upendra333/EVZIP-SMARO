@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
 import type { TripListItem } from './useTodayTrips'
 import { TRIP_STATUSES } from '../utils/constants'
-import { useOperator } from './useOperator'
 
 export function useAllBookings(filters?: {
   type?: string
@@ -18,8 +17,6 @@ export function useAllBookings(filters?: {
   includePastIncomplete?: boolean // For managers/admins to see incomplete past trips older than 1 day
   includeYesterdayIncomplete?: boolean // Show incomplete trips from yesterday (default: true for Dashboard)
 }) {
-  const { isManager, isAdmin } = useOperator()
-  
   return useQuery({
     queryKey: ['allBookings', filters],
     queryFn: async () => {
