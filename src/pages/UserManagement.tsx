@@ -39,7 +39,7 @@ export function UserManagement() {
   const canDelete = can(PERMISSIONS.MANAGE_USERS)
   const canResetPassword = can(PERMISSIONS.MANAGE_USERS)
 
-  const handleResetPassword = async (oldPassword: string, newPassword: string) => {
+  const handleResetPassword = async (_oldPassword: string, newPassword: string) => {
     if (!resetPasswordUserId) {
       throw new Error('User ID not found')
     }
