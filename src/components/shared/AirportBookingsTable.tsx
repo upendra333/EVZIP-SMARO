@@ -73,6 +73,9 @@ export function AirportBookingsTable({ bookings, onRowClick, isLoading }: Airpor
                 Customer
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Phone
+              </th>
+              <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                 Pickup → Drop
               </th>
               <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -115,6 +118,9 @@ export function AirportBookingsTable({ bookings, onRowClick, isLoading }: Airpor
                   </td>
                   <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
                     {booking.customer?.name || '-'}
+                  </td>
+                  <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600">
+                    {booking.customer?.phone || '-'}
                   </td>
                   <td className="px-6 py-4 text-sm text-gray-900 max-w-xs">
                     <div className="truncate">

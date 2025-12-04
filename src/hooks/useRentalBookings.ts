@@ -127,6 +127,15 @@ export function useRentalBookings(filters?: {
         )
       }
 
+      // Filter out bookings older than 1 day
+      const oneDayAgo = new Date()
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+      bookings = bookings.filter((booking) => {
+        if (!booking.start_at) return false
+        const startDate = new Date(booking.start_at)
+        return startDate >= oneDayAgo
+      })
+
       return bookings
     },
   })

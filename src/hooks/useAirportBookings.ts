@@ -119,6 +119,15 @@ export function useAirportBookings(filters?: {
         )
       }
 
+      // Filter out bookings older than 1 day
+      const oneDayAgo = new Date()
+      oneDayAgo.setDate(oneDayAgo.getDate() - 1)
+      bookings = bookings.filter((booking) => {
+        if (!booking.pickup_at) return false
+        const pickupDate = new Date(booking.pickup_at)
+        return pickupDate >= oneDayAgo
+      })
+
       return bookings
     },
   })
