@@ -45,7 +45,12 @@ BEGIN
     ),
     daily_data AS (
         SELECT 
-            DATE(t.created_at) as report_date,
+            CASE 
+                WHEN t.type = 'subscription' THEN sr.date
+                WHEN t.type = 'airport' THEN DATE(ab.pickup_at)
+                WHEN t.type = 'rental' THEN DATE(rb.start_at)
+                WHEN t.type = 'manual' THEN DATE(mr.pickup_at)
+            END as report_date,
             COUNT(*) as total_rides,
             SUM(CASE 
                 WHEN t.type = 'subscription' THEN sr.fare
@@ -114,10 +119,10 @@ BEGIN
             COUNT(*) FILTER (WHERE p.method = 'upi') as upi_count,
             COUNT(*) FILTER (WHERE p.method NOT IN ('cash', 'upi') AND p.method IS NOT NULL) as others_count
         FROM trips t
-        LEFT JOIN subscription_rides sr ON t.type = 'subscription' AND t.ref_id = sr.id
-        LEFT JOIN airport_bookings ab ON t.type = 'airport' AND t.ref_id = ab.id
-        LEFT JOIN rental_bookings rb ON t.type = 'rental' AND t.ref_id = rb.id
-        LEFT JOIN manual_rides mr ON t.type = 'manual' AND t.ref_id = mr.id
+        LEFT JOIN subscription_rides sr ON t.type = 'subscription' AND t.ref_id = sr.id AND sr.deleted_at IS NULL
+        LEFT JOIN airport_bookings ab ON t.type = 'airport' AND t.ref_id = ab.id AND ab.deleted_at IS NULL
+        LEFT JOIN rental_bookings rb ON t.type = 'rental' AND t.ref_id = rb.id AND rb.deleted_at IS NULL
+        LEFT JOIN manual_rides mr ON t.type = 'manual' AND t.ref_id = mr.id AND mr.deleted_at IS NULL
         LEFT JOIN LATERAL (
             SELECT method 
             FROM payments 
@@ -126,7 +131,12 @@ BEGIN
             ORDER BY received_at DESC NULLS LAST, created_at DESC
             LIMIT 1
         ) p ON true
-        WHERE DATE(t.created_at) BETWEEN p_from_date AND p_to_date
+        WHERE (
+            (t.type = 'subscription' AND sr.date BETWEEN p_from_date AND p_to_date) OR
+            (t.type = 'airport' AND DATE(ab.pickup_at) BETWEEN p_from_date AND p_to_date) OR
+            (t.type = 'rental' AND DATE(rb.start_at) BETWEEN p_from_date AND p_to_date) OR
+            (t.type = 'manual' AND DATE(mr.pickup_at) BETWEEN p_from_date AND p_to_date)
+        )
         AND (
             p_hub_id IS NULL OR
             (t.type = 'subscription' AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.id = sr.subscription_id AND s.hub_id = p_hub_id)) OR
@@ -134,7 +144,12 @@ BEGIN
             (t.type = 'rental' AND rb.hub_id = p_hub_id) OR
             (t.type = 'manual' AND mr.hub_id = p_hub_id)
         )
-        GROUP BY DATE(t.created_at)
+        GROUP BY CASE 
+            WHEN t.type = 'subscription' THEN sr.date
+            WHEN t.type = 'airport' THEN DATE(ab.pickup_at)
+            WHEN t.type = 'rental' THEN DATE(rb.start_at)
+            WHEN t.type = 'manual' THEN DATE(mr.pickup_at)
+        END
     )
     SELECT 
         ds.report_date,
@@ -204,8 +219,22 @@ RETURNS TABLE (
 BEGIN
     RETURN QUERY
     SELECT 
-        DATE_TRUNC('week', DATE(t.created_at))::DATE as week_start,
-        (DATE_TRUNC('week', DATE(t.created_at)) + INTERVAL '6 days')::DATE as week_end,
+        DATE_TRUNC('week', 
+            CASE 
+                WHEN t.type = 'subscription' THEN sr.date
+                WHEN t.type = 'airport' THEN DATE(ab.pickup_at)
+                WHEN t.type = 'rental' THEN DATE(rb.start_at)
+                WHEN t.type = 'manual' THEN DATE(mr.pickup_at)
+            END
+        )::DATE as week_start,
+        (DATE_TRUNC('week', 
+            CASE 
+                WHEN t.type = 'subscription' THEN sr.date
+                WHEN t.type = 'airport' THEN DATE(ab.pickup_at)
+                WHEN t.type = 'rental' THEN DATE(rb.start_at)
+                WHEN t.type = 'manual' THEN DATE(mr.pickup_at)
+            END
+        ) + INTERVAL '6 days')::DATE as week_end,
         COUNT(*)::BIGINT as total_rides,
         SUM(CASE 
             WHEN t.type = 'subscription' THEN sr.fare
@@ -274,10 +303,10 @@ BEGIN
         COUNT(*) FILTER (WHERE p.method = 'upi')::BIGINT as upi_count,
         COUNT(*) FILTER (WHERE p.method NOT IN ('cash', 'upi') AND p.method IS NOT NULL)::BIGINT as others_count
     FROM trips t
-    LEFT JOIN subscription_rides sr ON t.type = 'subscription' AND t.ref_id = sr.id
-    LEFT JOIN airport_bookings ab ON t.type = 'airport' AND t.ref_id = ab.id
-    LEFT JOIN rental_bookings rb ON t.type = 'rental' AND t.ref_id = rb.id
-    LEFT JOIN manual_rides mr ON t.type = 'manual' AND t.ref_id = mr.id
+    LEFT JOIN subscription_rides sr ON t.type = 'subscription' AND t.ref_id = sr.id AND sr.deleted_at IS NULL
+    LEFT JOIN airport_bookings ab ON t.type = 'airport' AND t.ref_id = ab.id AND ab.deleted_at IS NULL
+    LEFT JOIN rental_bookings rb ON t.type = 'rental' AND t.ref_id = rb.id AND rb.deleted_at IS NULL
+    LEFT JOIN manual_rides mr ON t.type = 'manual' AND t.ref_id = mr.id AND mr.deleted_at IS NULL
     LEFT JOIN LATERAL (
         SELECT method 
         FROM payments 
@@ -286,7 +315,12 @@ BEGIN
         ORDER BY received_at DESC NULLS LAST, created_at DESC
         LIMIT 1
     ) p ON true
-    WHERE DATE(t.created_at) BETWEEN p_from_date AND p_to_date
+    WHERE (
+        (t.type = 'subscription' AND sr.date BETWEEN p_from_date AND p_to_date) OR
+        (t.type = 'airport' AND DATE(ab.pickup_at) BETWEEN p_from_date AND p_to_date) OR
+        (t.type = 'rental' AND DATE(rb.start_at) BETWEEN p_from_date AND p_to_date) OR
+        (t.type = 'manual' AND DATE(mr.pickup_at) BETWEEN p_from_date AND p_to_date)
+    )
     AND (
         p_hub_id IS NULL OR
         (t.type = 'subscription' AND EXISTS (SELECT 1 FROM subscriptions s WHERE s.id = sr.subscription_id AND s.hub_id = p_hub_id)) OR
@@ -294,7 +328,14 @@ BEGIN
         (t.type = 'rental' AND rb.hub_id = p_hub_id) OR
         (t.type = 'manual' AND mr.hub_id = p_hub_id)
     )
-    GROUP BY DATE_TRUNC('week', DATE(t.created_at))
+    GROUP BY DATE_TRUNC('week', 
+        CASE 
+            WHEN t.type = 'subscription' THEN sr.date
+            WHEN t.type = 'airport' THEN DATE(ab.pickup_at)
+            WHEN t.type = 'rental' THEN DATE(rb.start_at)
+            WHEN t.type = 'manual' THEN DATE(mr.pickup_at)
+        END
+    )
     ORDER BY week_start;
 END;
 $$ LANGUAGE plpgsql;
