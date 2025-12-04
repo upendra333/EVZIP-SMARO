@@ -76,16 +76,17 @@ export function useImport() {
             // For optional UUID fields, if empty, placeholder, or invalid format, skip validation (treat as empty)
             // Only validate if there's an actual non-empty UUID value that matches the format
             if (uuidValue && uuidValue !== '' && !placeholderValues.includes(uuidValue)) {
-              // For optional fields, if it doesn't match UUID format, just skip it (don't error)
-              // Only error if it's a required field
-              if (!uuidRegex.test(uuidValue) && field.required) {
+              // For hub_id fields, allow hub names (they'll be converted to UUIDs in transformRow)
+              const isHubIdField = field.name === 'hub_id' || field.name === 'current_hub_id'
+              if (!uuidRegex.test(uuidValue) && field.required && !isHubIdField) {
                 errors.push({
                   row: rowIndex + 1,
                   field: field.name,
-                  message: `${field.label} must be a valid UUID`,
+                  message: `${field.label} must be a valid UUID or hub name`,
                 })
               }
               // For optional fields with invalid UUID format, we'll skip it in transformRow
+              // For hub_id fields, we'll try to resolve the name in transformRow
             }
             break
         }
@@ -95,11 +96,12 @@ export function useImport() {
     return errors
   }
 
-  const transformRow = (
+  const transformRow = async (
     row: Record<string, any>,
     mapping: Record<string, string>,
-    config: ImportTableConfig
-  ): Record<string, any> => {
+    config: ImportTableConfig,
+    hubNameToIdMap?: Map<string, string>
+  ): Promise<Record<string, any>> => {
     const transformed: Record<string, any> = {}
 
     config.fields.forEach((field) => {
@@ -118,13 +120,32 @@ export function useImport() {
           (typeof value === 'string' && placeholderValues.includes(value.trim()))
         
         // For UUID fields, also check if the value is a valid UUID format
-        // If it's not a valid UUID and the field is optional, treat it as empty
+        // If it's not a valid UUID, try to resolve it as a hub name (for hub_id fields)
         if (field.type === 'uuid' && typeof value === 'string') {
           const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
           const uuidValue = value.trim()
-          // If it's not a valid UUID and field is optional, skip it
-          if (uuidValue && !uuidRegex.test(uuidValue) && !field.required) {
-            return // Skip invalid UUID values for optional fields
+          
+          // If it's not a valid UUID, try to resolve it as a hub name
+          if (uuidValue && !uuidRegex.test(uuidValue) && (field.name === 'hub_id' || field.name === 'current_hub_id')) {
+            if (hubNameToIdMap) {
+              // Try case-insensitive lookup
+              const hubNameLower = uuidValue.toLowerCase()
+              const foundHubId = hubNameToIdMap.get(uuidValue) || hubNameToIdMap.get(hubNameLower)
+              
+              if (foundHubId) {
+                value = foundHubId
+              } else if (!field.required) {
+                // If hub name not found and field is optional, skip it
+                return
+              }
+              // If hub name not found and field is required, let validation catch it
+            } else if (!field.required) {
+              // If we don't have hub mapping and field is optional, skip it
+              return
+            }
+          } else if (uuidValue && !uuidRegex.test(uuidValue) && !field.required) {
+            // For other UUID fields that are optional, skip invalid UUIDs
+            return
           }
         }
         
@@ -185,15 +206,43 @@ export function useImport() {
     const errors: ValidationError[] = []
     const validRows: Record<string, any>[] = []
 
+    // Fetch hubs to create a name-to-ID mapping if we're importing data that might have hub_id fields
+    let hubNameToIdMap: Map<string, string> | undefined
+    const hasHubIdField = config.fields.some(f => f.name === 'hub_id' || f.name === 'current_hub_id')
+    if (hasHubIdField) {
+      try {
+        const { data: hubs, error: hubsError } = await supabase
+          .from('hubs')
+          .select('id, name')
+        
+        if (!hubsError && hubs) {
+          hubNameToIdMap = new Map()
+          hubs.forEach(hub => {
+            if (hub.name) {
+              // Store both lowercase and original case for case-insensitive lookup
+              hubNameToIdMap!.set(hub.name.toLowerCase(), hub.id)
+              hubNameToIdMap!.set(hub.name, hub.id)
+            }
+          })
+        }
+      } catch (err) {
+        console.warn('Failed to fetch hubs for name-to-ID mapping:', err)
+      }
+    }
+
     // Validate all rows
-    data.forEach((row, index) => {
+    for (let index = 0; index < data.length; index++) {
+      const row = data[index]
       const rowErrors = validateRow(row, index, config, mapping)
       if (rowErrors.length > 0) {
         errors.push(...rowErrors)
       } else {
-        validRows.push(transformRow(row, mapping, config))
+        const transformed = await transformRow(row, mapping, config, hubNameToIdMap)
+        if (transformed && Object.keys(transformed).length > 0) {
+          validRows.push(transformed)
+        }
       }
-    })
+    }
 
     if (validRows.length === 0) {
       setIsImporting(false)

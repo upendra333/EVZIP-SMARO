@@ -3,6 +3,7 @@ import { Dialog } from '@headlessui/react'
 import { useCreateRentalBooking } from '../../hooks/useCreateBooking'
 import { useHubs } from '../../hooks/useHubs'
 import { CustomerNameAutocomplete } from './CustomerNameAutocomplete'
+import { validateMobileNumber, validateFutureDateTime, validateEndAfterStart, validatePositiveNumber } from '../../utils/validation'
 
 interface CreateRentalBookingModalProps {
   isOpen: boolean
@@ -50,6 +51,60 @@ export function CreateRentalBookingModal({
     if (!formData.customer_name || !formData.start_at || !formData.end_at || !formData.pickup || !formData.drop) {
       alert('Please fill in all required fields')
       return
+    }
+
+    // Validate mobile number
+    const mobileValidation = validateMobileNumber(formData.customer_phone)
+    if (!mobileValidation.isValid) {
+      alert(mobileValidation.error)
+      return
+    }
+
+    // Validate start time is in future
+    const startTimeValidation = validateFutureDateTime(formData.start_at)
+    if (!startTimeValidation.isValid) {
+      alert(startTimeValidation.error)
+      return
+    }
+
+    // Validate end time is after start time
+    const endTimeValidation = validateEndAfterStart(formData.start_at, formData.end_at)
+    if (!endTimeValidation.isValid) {
+      alert(endTimeValidation.error)
+      return
+    }
+
+    // Validate positive numbers
+    if (formData.est_km) {
+      const estKmValidation = validatePositiveNumber(formData.est_km, 'Estimated KM')
+      if (!estKmValidation.isValid) {
+        alert(estKmValidation.error)
+        return
+      }
+    }
+
+    if (formData.fare) {
+      const fareValidation = validatePositiveNumber(formData.fare, 'Fare')
+      if (!fareValidation.isValid) {
+        alert(fareValidation.error)
+        return
+      }
+    }
+
+    if (formData.extra_km_rate) {
+      const extraKmValidation = validatePositiveNumber(formData.extra_km_rate, 'Extra KM Rate')
+      if (!extraKmValidation.isValid) {
+        alert(extraKmValidation.error)
+        return
+      }
+    }
+
+    if (formData.per_hour_rate) {
+      const perHourValidation = validatePositiveNumber(formData.per_hour_rate, 'Per Hour Rate')
+      if (!perHourValidation.isValid) {
+        alert(perHourValidation.error)
+        return
+      }
     }
 
     try {
@@ -142,13 +197,19 @@ export function CreateRentalBookingModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Mobile Number
+                Mobile Number <span className="text-red-500">*</span>
               </label>
               <input
                 type="tel"
                 value={formData.customer_phone}
-                onChange={(e) => setFormData((prev) => ({ ...prev, customer_phone: e.target.value }))}
-                placeholder="Enter mobile number"
+                onChange={(e) => {
+                  // Only allow digits
+                  const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                  setFormData((prev) => ({ ...prev, customer_phone: value }))
+                }}
+                placeholder="Enter 10 digit mobile number"
+                required
+                maxLength={10}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -160,8 +221,15 @@ export function CreateRentalBookingModal({
               <input
                 type="datetime-local"
                 value={formData.start_at}
-                onChange={(e) => setFormData((prev) => ({ ...prev, start_at: e.target.value }))}
+                onChange={(e) => {
+                  setFormData((prev) => ({ ...prev, start_at: e.target.value }))
+                  // Update end_at min if start_at changes
+                  if (e.target.value && prev.end_at && e.target.value > prev.end_at) {
+                    setFormData((prev) => ({ ...prev, end_at: '' }))
+                  }
+                }}
                 required
+                min={new Date().toISOString().slice(0, 16)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -175,7 +243,7 @@ export function CreateRentalBookingModal({
                 value={formData.end_at}
                 onChange={(e) => setFormData((prev) => ({ ...prev, end_at: e.target.value }))}
                 required
-                min={formData.start_at}
+                min={formData.start_at || new Date().toISOString().slice(0, 16)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -265,8 +333,14 @@ export function CreateRentalBookingModal({
               <input
                 type="number"
                 step="0.1"
+                min="0.1"
                 value={formData.est_km}
-                onChange={(e) => setFormData((prev) => ({ ...prev, est_km: e.target.value }))}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === '' || parseFloat(value) >= 0) {
+                    setFormData((prev) => ({ ...prev, est_km: value }))
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
@@ -279,10 +353,14 @@ export function CreateRentalBookingModal({
                 <input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.extra_km_rate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, extra_km_rate: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setFormData((prev) => ({ ...prev, extra_km_rate: value }))
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -294,10 +372,14 @@ export function CreateRentalBookingModal({
                 <input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.per_hour_rate}
-                  onChange={(e) =>
-                    setFormData((prev) => ({ ...prev, per_hour_rate: e.target.value }))
-                  }
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setFormData((prev) => ({ ...prev, per_hour_rate: value }))
+                    }
+                  }}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -308,8 +390,14 @@ export function CreateRentalBookingModal({
               <input
                 type="number"
                 step="0.01"
+                min="0.01"
                 value={formData.fare}
-                onChange={(e) => setFormData((prev) => ({ ...prev, fare: e.target.value }))}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === '' || parseFloat(value) >= 0) {
+                    setFormData((prev) => ({ ...prev, fare: value }))
+                  }
+                }}
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>

@@ -29,7 +29,7 @@ export function useCreateCustomer() {
       return result as Customer
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['customers'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -69,7 +69,7 @@ export function useUpdateCustomer() {
       return result as Customer
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['customers'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -107,7 +107,7 @@ export function useDeleteCustomer() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['customers'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })

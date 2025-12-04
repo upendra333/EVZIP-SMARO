@@ -13,13 +13,23 @@ export function useHubs() {
   return useQuery({
     queryKey: ['hubs'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('hubs')
-        .select('id, name, city, lat, lng')
-        .order('name')
+      try {
+        const { data, error } = await supabase
+          .from('hubs')
+          .select('id, name, city, lat, lng')
+          .order('name')
 
-      if (error) throw error
-      return (data || []) as Hub[]
+        if (error) {
+          console.error('Error fetching hubs:', error)
+          throw error
+        }
+        
+        console.log('Fetched hubs:', data)
+        return (data || []) as Hub[]
+      } catch (err) {
+        console.error('Exception in useHubs:', err)
+        throw err
+      }
     },
   })
 }

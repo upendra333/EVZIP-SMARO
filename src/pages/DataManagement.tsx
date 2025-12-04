@@ -17,17 +17,27 @@ import { useDeleteRide } from '../hooks/useDeleteRide'
 import { CustomerNameAutocomplete } from '../components/shared/CustomerNameAutocomplete'
 import { TripDrawer } from '../components/shared/TripDrawer'
 import type { TripListItem } from '../hooks/useTodayTrips'
+import { exportToCSV } from '../utils/csvExport'
 
 type TabType = 'customers' | 'subscriptions' | 'drivers' | 'vehicles' | 'hubs' | 'rides'
 
 export function DataManagement() {
   const { can } = useOperator()
-  const [activeTab, setActiveTab] = useState<TabType>('customers')
+  // Persist active tab in localStorage
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    const saved = localStorage.getItem('dataManagementActiveTab')
+    return (saved as TabType) || 'customers'
+  })
   const [editingCustomer, setEditingCustomer] = useState<string | null>(null)
   const [editingDriver, setEditingDriver] = useState<string | null>(null)
   const [editingVehicle, setEditingVehicle] = useState<string | null>(null)
   const [editingHub, setEditingHub] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+
+  // Save active tab to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('dataManagementActiveTab', activeTab)
+  }, [activeTab])
 
   // Define tabs with their required permissions
   const availableTabs: Array<{ key: TabType; permission: Permission }> = [
@@ -154,6 +164,7 @@ function CustomersTab({
   const createMutation = useCreateCustomer()
   const updateMutation = useUpdateCustomer()
   const deleteMutation = useDeleteCustomer()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const editingCustomer = customers?.find((c) => c.id === editingId)
 
@@ -161,10 +172,45 @@ function CustomersTab({
     if (!confirm('Are you sure you want to delete this customer?')) return
     try {
       await deleteMutation.mutateAsync(id)
+      alert('Customer deleted successfully')
     } catch (error: any) {
       alert(`Error: ${error.message}`)
     }
   }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} customer(s)? This action cannot be undone.`)) return
+    
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => deleteMutation.mutateAsync(id)))
+      setSelectedIds(new Set())
+      alert(`Successfully deleted ${selectedIds.size} customer(s)`)
+    } catch (error: any) {
+      alert(`Error: ${error.message}`)
+    }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(customers?.map(c => c.id) || []))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectItem = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const allSelected = customers && customers.length > 0 && selectedIds.size === customers.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < (customers?.length || 0)
 
   if (editingId && editingCustomer) {
     return (
@@ -191,18 +237,50 @@ function CustomersTab({
     )
   }
 
+  const handleExport = () => {
+    if (!customers || customers.length === 0) {
+      alert('No data to export')
+      return
+    }
+
+    const exportData = customers.map((customer) => ({
+      Name: customer.name,
+      Phone: customer.phone || '',
+      Email: customer.email || '',
+      Notes: customer.notes || '',
+    }))
+
+    exportToCSV(exportData, 'customers')
+  }
+
   return (
     <div>
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Customers</h2>
-        {can(PERMISSIONS.CREATE_CUSTOMER) && (
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && can(PERMISSIONS.DELETE_CUSTOMER) && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Selected ({selectedIds.size})
+            </button>
+          )}
           <button
-            onClick={onOpenAddModal}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={handleExport}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
           >
-            + Add Customer
+            Export CSV
           </button>
-        )}
+          {can(PERMISSIONS.CREATE_CUSTOMER) && (
+            <button
+              onClick={onOpenAddModal}
+              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              + Add Customer
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -212,6 +290,19 @@ function CustomersTab({
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                  {can(PERMISSIONS.DELETE_CUSTOMER) && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(input) => {
+                        if (input) input.indeterminate = someSelected
+                      }}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                  )}
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
@@ -221,7 +312,17 @@ function CustomersTab({
             </thead>
             <tbody className="divide-y divide-gray-200">
               {customers?.map((customer) => (
-                <tr key={customer.id}>
+                <tr key={customer.id} className={selectedIds.has(customer.id) ? 'bg-blue-50' : ''}>
+                  <td className="px-4 py-3">
+                    {can(PERMISSIONS.DELETE_CUSTOMER) && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(customer.id)}
+                        onChange={(e) => handleSelectItem(customer.id, e.target.checked)}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-900">{customer.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{customer.phone || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{customer.email || '-'}</td>
@@ -283,8 +384,43 @@ function SubscriptionsTab({
   const updateMutation = useUpdateSubscription()
   const cancelMutation = useCancelSubscription()
   const deleteMutation = useDeleteSubscription()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const editingSubscription = subscriptions?.find((s) => s.id === editingId)
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} subscription(s)? This action cannot be undone.`)) return
+    
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => deleteMutation.mutateAsync(id)))
+      setSelectedIds(new Set())
+      alert(`Successfully deleted ${selectedIds.size} subscription(s)`)
+    } catch (error: any) {
+      alert(`Error: ${error.message}`)
+    }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(subscriptions?.map(s => s.id) || []))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectItem = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const allSelected = subscriptions && subscriptions.length > 0 && selectedIds.size === subscriptions.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < (subscriptions?.length || 0)
 
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '-'
@@ -300,18 +436,57 @@ function SubscriptionsTab({
     return `₹${(paise / 100).toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
   }
 
+  const handleExport = () => {
+    if (!subscriptions || subscriptions.length === 0) {
+      alert('No data to export')
+      return
+    }
+
+    const exportData = subscriptions.map((sub) => {
+      const hub = hubs?.find((h) => h.id === sub.hub_id)
+      return {
+        'Customer Name': sub.client_name || '',
+        'Start Date': formatDate(sub.start_date),
+        'End Date': formatDate(sub.end_date),
+        'Pickup': sub.pickup || '',
+        'Drop': sub.drop || '',
+        'Distance (KM)': sub.distance_km || '',
+        'Hub': hub?.name || '',
+        'Status': sub.status || '',
+      }
+    })
+
+    exportToCSV(exportData, 'subscriptions')
+  }
+
   return (
     <div>
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Subscriptions</h2>
-        {can(PERMISSIONS.CREATE_SUBSCRIPTION) && (
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && can(PERMISSIONS.DELETE_SUBSCRIPTION) && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Selected ({selectedIds.size})
+            </button>
+          )}
           <button
-            onClick={onOpenAddModal}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={handleExport}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
           >
-            Add Subscription
+            Export CSV
           </button>
-        )}
+          {can(PERMISSIONS.CREATE_SUBSCRIPTION) && (
+            <button
+              onClick={onOpenAddModal}
+              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              Add Subscription
+            </button>
+          )}
+        </div>
       </div>
 
       {showAddModal && can(PERMISSIONS.CREATE_SUBSCRIPTION) && (
@@ -349,6 +524,19 @@ function SubscriptionsTab({
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                    {can(PERMISSIONS.DELETE_SUBSCRIPTION) && (
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={(input) => {
+                          if (input) input.indeterminate = someSelected
+                        }}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                    )}
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Route</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Start Date</th>
@@ -363,7 +551,17 @@ function SubscriptionsTab({
               </thead>
               <tbody className="divide-y divide-gray-200">
                 {subscriptions?.map((subscription) => (
-                  <tr key={subscription.id} className="hover:bg-gray-50">
+                  <tr key={subscription.id} className={`hover:bg-gray-50 ${selectedIds.has(subscription.id) ? 'bg-blue-50' : ''}`}>
+                    <td className="px-4 py-3">
+                      {can(PERMISSIONS.DELETE_SUBSCRIPTION) && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(subscription.id)}
+                          onChange={(e) => handleSelectItem(subscription.id, e.target.checked)}
+                          className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                        />
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       {subscription.customer?.name || subscription.client_name || '-'}
                     </td>
@@ -1002,6 +1200,7 @@ function DriversTab({
   const createMutation = useCreateDriver()
   const updateMutation = useUpdateDriver()
   const deleteMutation = useDeleteDriver()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const editingDriver = drivers?.find((d) => d.id === editingId)
 
@@ -1013,6 +1212,40 @@ function DriversTab({
       alert(`Error: ${error.message}`)
     }
   }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} driver(s)? This action cannot be undone.`)) return
+    
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => deleteMutation.mutateAsync(id)))
+      setSelectedIds(new Set())
+      alert(`Successfully deleted ${selectedIds.size} driver(s)`)
+    } catch (error: any) {
+      alert(`Error: ${error.message}`)
+    }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(drivers?.map(d => d.id) || []))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectItem = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const allSelected = drivers && drivers.length > 0 && selectedIds.size === drivers.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < (drivers?.length || 0)
 
   if (editingId && editingDriver) {
     return (
@@ -1041,18 +1274,54 @@ function DriversTab({
     )
   }
 
+  const handleExport = () => {
+    if (!drivers || drivers.length === 0) {
+      alert('No data to export')
+      return
+    }
+
+    const exportData = drivers.map((driver) => {
+      const hub = hubs?.find((h) => h.id === driver.hub_id)
+      return {
+        'Driver ID': driver.driver_id || '',
+        'Name': driver.name,
+        'Phone': driver.phone,
+        'Status': driver.status || '',
+        'Hub': hub?.name || '',
+      }
+    })
+
+    exportToCSV(exportData, 'drivers')
+  }
+
   return (
     <div>
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Drivers</h2>
-        {can(PERMISSIONS.CREATE_DRIVER) && (
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && can(PERMISSIONS.DELETE_DRIVER) && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Selected ({selectedIds.size})
+            </button>
+          )}
           <button
-            onClick={onOpenAddModal}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={handleExport}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
           >
-            + Add Driver
+            Export CSV
           </button>
-        )}
+          {can(PERMISSIONS.CREATE_DRIVER) && (
+            <button
+              onClick={onOpenAddModal}
+              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              + Add Driver
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -1062,6 +1331,19 @@ function DriversTab({
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                  {can(PERMISSIONS.DELETE_DRIVER) && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(input) => {
+                        if (input) input.indeterminate = someSelected
+                      }}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                  )}
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Driver ID</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
@@ -1074,7 +1356,17 @@ function DriversTab({
               {drivers?.map((driver) => {
                 const hub = hubs?.find((h) => h.id === driver.hub_id)
                 return (
-                  <tr key={driver.id}>
+                  <tr key={driver.id} className={selectedIds.has(driver.id) ? 'bg-blue-50' : ''}>
+                    <td className="px-4 py-3">
+                      {can(PERMISSIONS.DELETE_DRIVER) && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(driver.id)}
+                          onChange={(e) => handleSelectItem(driver.id, e.target.checked)}
+                          className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                        />
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-900 font-mono">{driver.driver_id || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-900">{driver.name}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{driver.phone}</td>
@@ -1344,6 +1636,7 @@ function VehiclesTab({
   const createMutation = useCreateVehicle()
   const updateMutation = useUpdateVehicle()
   const deleteMutation = useDeleteVehicle()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const editingVehicle = vehicles?.find((v) => v.id === editingId)
 
@@ -1355,6 +1648,40 @@ function VehiclesTab({
       alert(`Error: ${error.message}`)
     }
   }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} vehicle(s)? This action cannot be undone.`)) return
+    
+    try {
+      await Promise.all(Array.from(selectedIds).map(id => deleteMutation.mutateAsync(id)))
+      setSelectedIds(new Set())
+      alert(`Successfully deleted ${selectedIds.size} vehicle(s)`)
+    } catch (error: any) {
+      alert(`Error: ${error.message}`)
+    }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(vehicles?.map(v => v.id) || []))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectItem = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const allSelected = vehicles && vehicles.length > 0 && selectedIds.size === vehicles.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < (vehicles?.length || 0)
 
   if (editingId && editingVehicle) {
     return (
@@ -1383,18 +1710,58 @@ function VehiclesTab({
     )
   }
 
+  const handleExport = () => {
+    if (!vehicles || vehicles.length === 0) {
+      alert('No data to export')
+      return
+    }
+
+    const exportData = vehicles.map((vehicle) => {
+      const hub = hubs?.find((h) => h.id === vehicle.current_hub_id)
+      return {
+        'Reg No': vehicle.reg_no,
+        'Make': vehicle.make || '',
+        'Model': vehicle.model || '',
+        'Seats': vehicle.seats,
+        'Status': vehicle.status === 'available' ? 'Available' :
+                  vehicle.status === 'ets' ? 'ETS' :
+                  vehicle.status === 'service' ? 'Service' :
+                  vehicle.status,
+        'Hub': hub?.name || '',
+      }
+    })
+
+    exportToCSV(exportData, 'vehicles')
+  }
+
   return (
     <div>
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Vehicles</h2>
-        {can(PERMISSIONS.CREATE_VEHICLE) && (
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && can(PERMISSIONS.DELETE_VEHICLE) && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Selected ({selectedIds.size})
+            </button>
+          )}
           <button
-            onClick={onOpenAddModal}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={handleExport}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
           >
-            + Add Vehicle
+            Export CSV
           </button>
-        )}
+          {can(PERMISSIONS.CREATE_VEHICLE) && (
+            <button
+              onClick={onOpenAddModal}
+              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              + Add Vehicle
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
@@ -1404,6 +1771,19 @@ function VehiclesTab({
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                  {can(PERMISSIONS.DELETE_VEHICLE) && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(input) => {
+                        if (input) input.indeterminate = someSelected
+                      }}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                  )}
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Reg No</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Make</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Model</th>
@@ -1417,7 +1797,17 @@ function VehiclesTab({
               {vehicles?.map((vehicle) => {
                 const hub = hubs?.find((h) => h.id === vehicle.current_hub_id)
                 return (
-                  <tr key={vehicle.id}>
+                  <tr key={vehicle.id} className={selectedIds.has(vehicle.id) ? 'bg-blue-50' : ''}>
+                    <td className="px-4 py-3">
+                      {can(PERMISSIONS.DELETE_VEHICLE) && (
+                        <input
+                          type="checkbox"
+                          checked={selectedIds.has(vehicle.id)}
+                          onChange={(e) => handleSelectItem(vehicle.id, e.target.checked)}
+                          className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                        />
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-900 font-medium">{vehicle.reg_no}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{vehicle.make || '-'}</td>
                     <td className="px-4 py-3 text-sm text-gray-600">{vehicle.model || '-'}</td>
@@ -1425,11 +1815,14 @@ function VehiclesTab({
                     <td className="px-4 py-3 text-sm">
                       <span className={`px-2 py-1 rounded text-xs ${
                         vehicle.status === 'available' ? 'bg-green-100 text-green-800' :
-                        vehicle.status === 'assigned' ? 'bg-blue-100 text-blue-800' :
-                        vehicle.status === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                        vehicle.status === 'ets' ? 'bg-blue-100 text-blue-800' :
+                        vehicle.status === 'service' ? 'bg-yellow-100 text-yellow-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {vehicle.status}
+                        {vehicle.status === 'available' ? 'Available' :
+                         vehicle.status === 'ets' ? 'ETS' :
+                         vehicle.status === 'service' ? 'Service' :
+                         vehicle.status}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{hub?.name || '-'}</td>
@@ -1544,9 +1937,8 @@ function EditVehicleForm({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="available">Available</option>
-            <option value="assigned">Assigned</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="inactive">Inactive</option>
+            <option value="ets">ETS</option>
+            <option value="service">Service</option>
           </select>
         </div>
         <div>
@@ -1659,9 +2051,8 @@ function AddVehicleForm({
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="available">Available</option>
-            <option value="assigned">Assigned</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="inactive">Inactive</option>
+            <option value="ets">ETS</option>
+            <option value="service">Service</option>
           </select>
         </div>
         <div>
@@ -1720,6 +2111,7 @@ function HubsTab({
   const createMutation = useCreateHub()
   const updateMutation = useUpdateHub()
   const deleteMutation = useDeleteHub()
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
 
   const editingHub = hubs?.find((h) => h.id === editingId)
 
@@ -1727,18 +2119,59 @@ function HubsTab({
     if (!confirm('Are you sure you want to delete this hub?')) return
     try {
       await deleteMutation.mutateAsync(id)
+      alert('Hub deleted successfully')
     } catch (error: any) {
       alert(`Error: ${error.message}`)
     }
   }
+
+  const handleBulkDelete = async () => {
+    if (selectedIds.size === 0) return
+    if (!confirm(`Are you sure you want to delete ${selectedIds.size} hub(s)? This action cannot be undone.`)) return
+    
+    try {
+      const count = selectedIds.size
+      await Promise.all(Array.from(selectedIds).map(id => deleteMutation.mutateAsync(id)))
+      setSelectedIds(new Set())
+      alert(`Successfully deleted ${count} hub(s)`)
+    } catch (error: any) {
+      alert(`Error: ${error.message}`)
+    }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedIds(new Set(hubs?.map(h => h.id) || []))
+    } else {
+      setSelectedIds(new Set())
+    }
+  }
+
+  const handleSelectItem = (id: string, checked: boolean) => {
+    const newSelected = new Set(selectedIds)
+    if (checked) {
+      newSelected.add(id)
+    } else {
+      newSelected.delete(id)
+    }
+    setSelectedIds(newSelected)
+  }
+
+  const allSelected = hubs && hubs.length > 0 && selectedIds.size === hubs.length
+  const someSelected = selectedIds.size > 0 && selectedIds.size < (hubs?.length || 0)
 
   if (editingId && editingHub) {
     return (
       <EditHubForm
         hub={editingHub}
         onSave={async (data) => {
-          await updateMutation.mutateAsync({ id: editingId, ...data })
-          onCloseEdit()
+          try {
+            await updateMutation.mutateAsync({ id: editingId, ...data })
+            alert('Hub updated successfully')
+            onCloseEdit()
+          } catch (error: any) {
+            alert(`Error: ${error.message}`)
+          }
         }}
         onCancel={onCloseEdit}
       />
@@ -1757,27 +2190,72 @@ function HubsTab({
     )
   }
 
+  const handleExport = () => {
+    if (!hubs || hubs.length === 0) {
+      alert('No data to export')
+      return
+    }
+
+    const exportData = hubs.map((hub) => ({
+      'Name': hub.name,
+      'City': hub.city || '',
+      'Latitude': hub.lat || '',
+      'Longitude': hub.lng || '',
+    }))
+
+    exportToCSV(exportData, 'hubs')
+  }
+
   return (
     <div>
       <div className="mb-4 flex justify-between items-center">
         <h2 className="text-lg font-semibold">Hubs</h2>
-        {can(PERMISSIONS.CREATE_HUB) && (
+        <div className="flex gap-2">
+          {selectedIds.size > 0 && can(PERMISSIONS.DELETE_HUB) && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Selected ({selectedIds.size})
+            </button>
+          )}
           <button
-            onClick={onOpenAddModal}
-            className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            onClick={handleExport}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
           >
-            + Add Hub
+            Export CSV
           </button>
-        )}
+          {can(PERMISSIONS.CREATE_HUB) && (
+            <button
+              onClick={onOpenAddModal}
+              className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+            >
+              + Add Hub
+            </button>
+          )}
+        </div>
       </div>
 
       {isLoading ? (
         <div className="text-center py-8">Loading...</div>
-      ) : (
+      ) : hubs && hubs.length > 0 ? (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                  {can(PERMISSIONS.DELETE_HUB) && (
+                    <input
+                      type="checkbox"
+                      checked={allSelected}
+                      ref={(input) => {
+                        if (input) input.indeterminate = someSelected
+                      }}
+                      onChange={(e) => handleSelectAll(e.target.checked)}
+                      className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                    />
+                  )}
+                </th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">City</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Latitude</th>
@@ -1786,8 +2264,18 @@ function HubsTab({
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {hubs?.map((hub) => (
-                <tr key={hub.id}>
+              {hubs.map((hub) => (
+                <tr key={hub.id} className={selectedIds.has(hub.id) ? 'bg-blue-50' : ''}>
+                  <td className="px-4 py-3">
+                    {can(PERMISSIONS.DELETE_HUB) && (
+                      <input
+                        type="checkbox"
+                        checked={selectedIds.has(hub.id)}
+                        onChange={(e) => handleSelectItem(hub.id, e.target.checked)}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                    )}
+                  </td>
                   <td className="px-4 py-3 text-sm text-gray-900 font-medium">{hub.name}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{hub.city || '-'}</td>
                   <td className="px-4 py-3 text-sm text-gray-600">{hub.lat || '-'}</td>
@@ -1817,9 +2305,25 @@ function HubsTab({
               ))}
             </tbody>
           </table>
-          {hubs?.length === 0 && (
-            <div className="text-center py-8 text-gray-500">No hubs found</div>
-          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-lg border border-gray-200 p-8">
+          <div className="text-center py-8 text-gray-500">
+            <p className="text-lg font-medium mb-2">No hubs found</p>
+            <p className="text-sm text-gray-400 mb-4">
+              {can(PERMISSIONS.CREATE_HUB)
+                ? 'Get started by adding your first hub.'
+                : 'No hubs are available. Contact an administrator to add hubs.'}
+            </p>
+            {can(PERMISSIONS.CREATE_HUB) && (
+              <button
+                onClick={onOpenAddModal}
+                className="bg-primary text-white px-4 py-2 rounded-lg hover:bg-primary/90 transition-colors"
+              >
+                + Add Hub
+              </button>
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -2009,25 +2513,90 @@ function AddHubForm({
 
 // Rides Tab
 function RidesTab() {
-  const { can, isManager, isAdmin } = useOperator()
-  const [showPastIncomplete, setShowPastIncomplete] = useState(false)
+  const { can } = useOperator()
   const [selectedTrip, setSelectedTrip] = useState<TripListItem | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
+  const [selectedRides, setSelectedRides] = useState<Set<string>>(new Set())
+  const [filters, setFilters] = useState({
+    type: '',
+    status: '',
+    customer: '',
+    customerPhone: '',
+    hub: '',
+    driver: '',
+    vehicle: '',
+  })
+  const { data: hubs } = useHubs()
   const { data: bookings, isLoading } = useAllBookings({
-    includePastIncomplete: (isManager() || isAdmin()) && showPastIncomplete,
-    includeYesterdayIncomplete: false // Don't show yesterday's incomplete trips here (only in Dashboard)
+    showAllRides: true, // Show all rides regardless of date
+    includePastIncomplete: true, // Always show incomplete trips, we'll mark old ones in the UI
+    includeYesterdayIncomplete: false, // Don't show yesterday's incomplete trips here (only in Dashboard)
+    type: filters.type || undefined,
+    status: filters.status || undefined,
+    customer: filters.customer || undefined,
+    customerPhone: filters.customerPhone || undefined,
+    hub: filters.hub || undefined,
+    driver: filters.driver || undefined,
+    vehicle: filters.vehicle || undefined,
   })
   const deleteMutation = useDeleteRide()
 
   const handleDelete = async (rideId: string, rideType: 'subscription' | 'airport' | 'rental' | 'manual') => {
     if (!confirm('Are you sure you want to delete this ride? This action cannot be undone.')) return
     try {
+      console.log('Deleting ride:', { rideId, rideType })
       await deleteMutation.mutateAsync({ rideId, rideType })
+      console.log('Ride deleted successfully')
       alert('Ride deleted successfully')
     } catch (error: any) {
-      alert(`Error: ${error.message}`)
+      console.error('Error deleting ride:', error)
+      alert(`Error: ${error.message || 'Failed to delete ride'}`)
     }
   }
+
+  const handleBulkDelete = async () => {
+    if (selectedRides.size === 0) return
+    const count = selectedRides.size
+    if (!confirm(`Are you sure you want to delete ${count} ride(s)? This action cannot be undone.`)) return
+    
+    try {
+      console.log('Bulk deleting rides:', Array.from(selectedRides))
+      const deletePromises = Array.from(selectedRides).map(key => {
+        const [rideId, rideType] = key.split('|')
+        console.log('Deleting:', { rideId, rideType })
+        return deleteMutation.mutateAsync({ rideId, rideType: rideType.toLowerCase() as 'subscription' | 'airport' | 'rental' | 'manual' })
+      })
+      await Promise.all(deletePromises)
+      setSelectedRides(new Set())
+      console.log('All rides deleted successfully')
+      alert(`Successfully deleted ${count} ride(s)`)
+    } catch (error: any) {
+      console.error('Error in bulk delete:', error)
+      alert(`Error: ${error.message || 'Failed to delete some rides'}`)
+    }
+  }
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && bookings) {
+      const allKeys = bookings.map(b => `${b.id}|${b.type}`)
+      setSelectedRides(new Set(allKeys))
+    } else {
+      setSelectedRides(new Set())
+    }
+  }
+
+  const handleSelectItem = (key: string, checked: boolean) => {
+    const newSelected = new Set(selectedRides)
+    if (checked) {
+      newSelected.add(key)
+    } else {
+      newSelected.delete(key)
+    }
+    setSelectedRides(newSelected)
+  }
+
+  const allSelected = bookings && bookings.length > 0 && selectedRides.size === bookings.length
+  const someSelected = selectedRides.size > 0 && selectedRides.size < (bookings?.length || 0)
 
   const handleEdit = (booking: TripListItem) => {
     setSelectedTrip(booking)
@@ -2038,7 +2607,60 @@ function RidesTab() {
   const canDelete = can(PERMISSIONS.DELETE_RIDE)
   const showActions = canEdit || canDelete
 
-  const canViewPastIncomplete = isManager() || isAdmin()
+  // Helper function to check if a trip is incomplete and older than 1 day
+  const isIncompleteAndOld = (booking: TripListItem) => {
+    if (!booking.start_time) return false
+    const incompleteStatuses = ['created', 'assigned', 'enroute']
+    if (!incompleteStatuses.includes(booking.status)) return false
+    
+    const tripDate = new Date(booking.start_time)
+    const yesterday = new Date()
+    yesterday.setDate(yesterday.getDate() - 1)
+    yesterday.setHours(0, 0, 0, 0)
+    
+    return tripDate < yesterday
+  }
+
+  const handleExport = () => {
+    if (!bookings || bookings.length === 0) {
+      alert('No data to export')
+      return
+    }
+
+    const exportData = bookings.map((booking) => {
+      const startTime = booking.start_time ? new Date(booking.start_time) : null
+      return {
+        'Type': booking.type,
+        'Customer Name': booking.customer_name || '',
+        'Customer Phone': booking.customer_phone || '',
+        'Start Time': startTime ? startTime.toLocaleString('en-IN') : '',
+        'Hub': booking.hub_name || '',
+        'Route': booking.route || '',
+        'Driver': booking.driver_name || '',
+        'Vehicle': booking.vehicle_reg || '',
+        'Status': booking.status,
+        'Fare (₹)': booking.fare ? (booking.fare / 100).toFixed(2) : '',
+        'Est KM': booking.est_km || '',
+        'Actual KM': booking.actual_km || '',
+      }
+    })
+
+    exportToCSV(exportData, 'rides')
+  }
+
+  const hasActiveFilters = filters.type || filters.status || filters.customer || filters.customerPhone || filters.hub || filters.driver || filters.vehicle
+
+  const clearFilters = () => {
+    setFilters({
+      type: '',
+      status: '',
+      customer: '',
+      customerPhone: '',
+      hub: '',
+      driver: '',
+      vehicle: '',
+    })
+  }
 
   return (
     <div>
@@ -2047,16 +2669,137 @@ function RidesTab() {
           <h2 className="text-lg font-semibold">All Rides</h2>
           <p className="text-sm text-gray-600 mt-1">View all bookings (Subscription, Airport, Rental, Manual)</p>
         </div>
-        {canViewPastIncomplete && (
-          <label className="flex items-center space-x-2 cursor-pointer">
+        <div className="flex items-center gap-4">
+          {selectedRides.size > 0 && can(PERMISSIONS.DELETE_RIDE) && (
+            <button
+              onClick={handleBulkDelete}
+              className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              Delete Selected ({selectedRides.size})
+            </button>
+          )}
+          <button
+            onClick={handleExport}
+            className="bg-gray-600 text-white px-4 py-2 rounded-lg hover:bg-gray-700 transition-colors"
+          >
+            Export CSV
+          </button>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Type Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Type</label>
+            <select
+              value={filters.type}
+              onChange={(e) => setFilters({ ...filters, type: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">All Types</option>
+              <option value="subscription">Subscription</option>
+              <option value="airport">Airport</option>
+              <option value="rental">Rental</option>
+              <option value="manual">Manual Ride</option>
+            </select>
+          </div>
+
+          {/* Status Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+            <select
+              value={filters.status}
+              onChange={(e) => setFilters({ ...filters, status: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">All Statuses</option>
+              <option value="created">Created</option>
+              <option value="assigned">Assigned</option>
+              <option value="enroute">Enroute</option>
+              <option value="completed">Completed</option>
+              <option value="no_show">No Show</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </div>
+
+          {/* Customer Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Customer</label>
             <input
-              type="checkbox"
-              checked={showPastIncomplete}
-              onChange={(e) => setShowPastIncomplete(e.target.checked)}
-              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+              type="text"
+              value={filters.customer}
+              onChange={(e) => setFilters({ ...filters, customer: e.target.value })}
+              placeholder="Search customer name..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
             />
-            <span className="text-sm text-gray-700">Show incomplete trips older than 1 day</span>
-          </label>
+          </div>
+
+          {/* Mobile Number Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Mobile Number</label>
+            <input
+              type="text"
+              value={filters.customerPhone}
+              onChange={(e) => setFilters({ ...filters, customerPhone: e.target.value })}
+              placeholder="Search mobile number..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          {/* Hub Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Hub</label>
+            <select
+              value={filters.hub}
+              onChange={(e) => setFilters({ ...filters, hub: e.target.value })}
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            >
+              <option value="">All Hubs</option>
+              {hubs?.map((hub) => (
+                <option key={hub.id} value={hub.name}>
+                  {hub.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Driver Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Driver</label>
+            <input
+              type="text"
+              value={filters.driver}
+              onChange={(e) => setFilters({ ...filters, driver: e.target.value })}
+              placeholder="Search driver name..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+
+          {/* Vehicle Filter */}
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-2">Vehicle</label>
+            <input
+              type="text"
+              value={filters.vehicle}
+              onChange={(e) => setFilters({ ...filters, vehicle: e.target.value })}
+              placeholder="Search vehicle reg no..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+            />
+          </div>
+        </div>
+
+        {/* Clear Filters */}
+        {hasActiveFilters && (
+          <div className="mt-4 pt-4 border-t border-gray-200">
+            <button
+              onClick={clearFilters}
+              className="text-sm text-primary hover:underline"
+            >
+              Clear all filters
+            </button>
+          </div>
         )}
       </div>
 
@@ -2068,6 +2811,19 @@ function RidesTab() {
             <table className="w-full">
               <thead className="bg-gray-50 border-b border-gray-200">
                 <tr>
+                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase w-12">
+                    {can(PERMISSIONS.DELETE_RIDE) && (
+                      <input
+                        type="checkbox"
+                        checked={allSelected}
+                        ref={(input) => {
+                          if (input) input.indeterminate = someSelected
+                        }}
+                        onChange={(e) => handleSelectAll(e.target.checked)}
+                        className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                      />
+                    )}
+                  </th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                   <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Mobile</th>
@@ -2083,21 +2839,30 @@ function RidesTab() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-200">
-                {bookings?.slice(0, 100).map((booking) => {
-                  const startTime = booking.start_time ? new Date(booking.start_time) : null
-                  const isPast = startTime && startTime < new Date()
-                  const isIncomplete = ['created', 'assigned', 'enroute'].includes(booking.status)
-                  const isPastIncomplete = isPast && isIncomplete
+                {bookings?.map((booking) => {
+                  const rideKey = `${booking.id}|${booking.type}`
+                  const isSelected = selectedRides.has(rideKey)
+                  const isOldIncomplete = isIncompleteAndOld(booking)
                   
                   return (
-                  <tr key={booking.id} className={isPastIncomplete ? 'bg-yellow-50' : ''}>
+                  <tr key={booking.id} className={`${isOldIncomplete ? 'bg-yellow-50 border-l-4 border-yellow-500' : ''} ${isSelected ? 'bg-blue-50' : ''}`}>
+                    <td className="px-4 py-3">
+                      {can(PERMISSIONS.DELETE_RIDE) && (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={(e) => handleSelectItem(rideKey, e.target.checked)}
+                          className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                        />
+                      )}
+                    </td>
                     <td className="px-4 py-3 text-sm text-gray-900">
                       <span className="px-2 py-1 rounded text-xs bg-blue-100 text-blue-800">
                         {booking.type}
                       </span>
-                      {isPastIncomplete && (
-                        <span className="ml-2 px-2 py-1 rounded text-xs bg-yellow-200 text-yellow-800" title="Past incomplete trip">
-                          Past
+                      {isOldIncomplete && (
+                        <span className="ml-2 px-2 py-1 rounded text-xs bg-red-200 text-red-800 font-semibold" title="Incomplete trip older than 1 day">
+                          ⚠️ Old Incomplete
                         </span>
                       )}
                     </td>

@@ -3,6 +3,7 @@ import { Dialog } from '@headlessui/react'
 import { useCreateSubscription } from '../../hooks/useCreateBooking'
 import { useHubs } from '../../hooks/useHubs'
 import { CustomerNameAutocomplete } from './CustomerNameAutocomplete'
+import { validateMobileNumber, validatePositiveNumber } from '../../utils/validation'
 
 interface CreateSubscriptionModalProps {
   isOpen: boolean
@@ -90,6 +91,39 @@ export function CreateSubscriptionModal({
       return
     }
 
+    // Validate mobile number
+    const mobileValidation = validateMobileNumber(formData.customer_phone)
+    if (!mobileValidation.isValid) {
+      alert(mobileValidation.error)
+      return
+    }
+
+    // Validate start date is not in the past
+    const startDate = new Date(formData.start_date)
+    const today = new Date()
+    today.setHours(0, 0, 0, 0)
+    if (startDate < today) {
+      alert('Start date cannot be in the past')
+      return
+    }
+
+    // Validate positive numbers
+    if (formData.distance_km) {
+      const distanceValidation = validatePositiveNumber(formData.distance_km, 'Distance KM')
+      if (!distanceValidation.isValid) {
+        alert(distanceValidation.error)
+        return
+      }
+    }
+
+    if (formData.subscription_amount) {
+      const amountValidation = validatePositiveNumber(formData.subscription_amount, 'Subscription Amount')
+      if (!amountValidation.isValid) {
+        alert(amountValidation.error)
+        return
+      }
+    }
+
     try {
       await createMutation.mutateAsync({
         customer_name: formData.customer_name.trim(),
@@ -170,13 +204,19 @@ export function CreateSubscriptionModal({
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Mobile No
+                  Mobile No <span className="text-red-500">*</span>
                 </label>
                 <input
                   type="tel"
                   value={formData.customer_phone}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, customer_phone: e.target.value }))}
-                  placeholder="Enter mobile number"
+                  onChange={(e) => {
+                    // Only allow digits
+                    const value = e.target.value.replace(/\D/g, '').slice(0, 10)
+                    setFormData((prev) => ({ ...prev, customer_phone: value }))
+                  }}
+                  placeholder="Enter 10 digit mobile number"
+                  required
+                  maxLength={10}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -225,6 +265,7 @@ export function CreateSubscriptionModal({
                   value={formData.start_date}
                   onChange={(e) => setFormData((prev) => ({ ...prev, start_date: e.target.value }))}
                   required
+                  min={new Date().toISOString().split('T')[0]}
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
               </div>
@@ -252,8 +293,14 @@ export function CreateSubscriptionModal({
                 <input
                   type="number"
                   step="0.1"
+                  min="0.1"
                   value={formData.distance_km}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, distance_km: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setFormData((prev) => ({ ...prev, distance_km: value }))
+                    }
+                  }}
                   placeholder="Enter total kilometers"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />
@@ -309,7 +356,14 @@ export function CreateSubscriptionModal({
                   type="number"
                   step="0.01"
                   value={formData.subscription_amount}
-                  onChange={(e) => setFormData((prev) => ({ ...prev, subscription_amount: e.target.value }))}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setFormData((prev) => ({ ...prev, subscription_amount: value }))
+                    }
+                  }}
+                  min="0.01"
+                  step="0.01"
                   placeholder="Enter subscription amount"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />

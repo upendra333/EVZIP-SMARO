@@ -29,7 +29,8 @@ export function useCreateVehicle() {
       return result as Vehicle
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+      queryClient.invalidateQueries({ queryKey: ['vehicles'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allVehicles'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -69,7 +70,8 @@ export function useUpdateVehicle() {
       return result as Vehicle
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+      queryClient.invalidateQueries({ queryKey: ['vehicles'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allVehicles'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -107,7 +109,8 @@ export function useDeleteVehicle() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['vehicles'] })
+      queryClient.invalidateQueries({ queryKey: ['vehicles'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allVehicles'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })

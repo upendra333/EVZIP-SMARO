@@ -29,7 +29,7 @@ export function useCreateHub() {
       return result as Hub
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hubs'] })
+      queryClient.invalidateQueries({ queryKey: ['hubs'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -69,7 +69,7 @@ export function useUpdateHub() {
       return result as Hub
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hubs'] })
+      queryClient.invalidateQueries({ queryKey: ['hubs'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -107,7 +107,7 @@ export function useDeleteHub() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['hubs'] })
+      queryClient.invalidateQueries({ queryKey: ['hubs'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })

@@ -40,7 +40,7 @@ export function useUpdateSubscription() {
       return result as Subscription
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -84,7 +84,7 @@ export function useCancelSubscription() {
       return result
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -123,11 +123,11 @@ export function useDeleteSubscription() {
       return { id }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['subscriptions'] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptions'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
-      queryClient.invalidateQueries({ queryKey: ['subscriptionRides'] })
-      queryClient.invalidateQueries({ queryKey: ['todayTrips'] })
-      queryClient.invalidateQueries({ queryKey: ['allBookings'] })
+      queryClient.invalidateQueries({ queryKey: ['subscriptionRides'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' })
     },
   })
 }

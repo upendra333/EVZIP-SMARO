@@ -51,7 +51,7 @@ CREATE TABLE IF NOT EXISTS vehicles (
     model VARCHAR(100),
     seats INTEGER DEFAULT 4,
     current_hub_id UUID REFERENCES hubs(id) ON DELETE SET NULL,
-    status VARCHAR(50) DEFAULT 'available', -- available, assigned, maintenance, inactive
+    status VARCHAR(50) DEFAULT 'available', -- available, ets, service
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

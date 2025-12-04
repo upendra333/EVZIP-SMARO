@@ -245,6 +245,10 @@ export function Imports() {
           }
           return ''
         case 'uuid':
+          // For hub_id fields, show hub name examples instead of UUIDs
+          if (field.name === 'hub_id' || field.name === 'current_hub_id') {
+            return rowIndex === 0 ? 'HQ' : 'East'
+          }
           if (field.required) {
             return rowIndex === 0 
               ? '00000000-0000-0000-0000-000000000000'

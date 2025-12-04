@@ -9,6 +9,8 @@ export function useAllBookings(filters?: {
   hub?: string
   driver?: string
   vehicle?: string
+  customer?: string
+  customerPhone?: string
   dateFrom?: string
   dateTo?: string
   dueNext60Min?: boolean
@@ -16,6 +18,7 @@ export function useAllBookings(filters?: {
   dueTomorrow?: boolean
   includePastIncomplete?: boolean // For managers/admins to see incomplete past trips older than 1 day
   includeYesterdayIncomplete?: boolean // Show incomplete trips from yesterday (default: true for Dashboard)
+  showAllRides?: boolean // If true, show all rides regardless of date (for Data Management)
 }) {
   return useQuery({
     queryKey: ['allBookings', filters],
@@ -301,34 +304,57 @@ export function useAllBookings(filters?: {
             }
           }
         }
-        // Fallback for missing data
-        return {
-          id: trip.id,
-          type: trip.type as any,
-          created_at: trip.created_at,
-          start_time: null,
-          hub_route: null,
-          hub_name: null,
-          route: null,
-          customer_name: null,
-          customer_phone: null,
-          driver_name: null,
-          vehicle_reg: null,
-          status: trip.status,
-          fare: null,
-          ref_id: trip.ref_id,
-          est_km: null,
-          actual_km: null,
-        }
+        // Ride data doesn't exist (deleted), return null to filter out
+        return null
       })
+      .filter((trip): trip is TripListItem => trip !== null) // Filter out null entries (deleted rides)
 
       // Apply additional filters that require checking nested data
       let filteredTrips = trips
       
-      // Filter by booking date (today and future) if no date range specified
-      // Exception: Show incomplete trips from yesterday for all users (1 day old only)
-      // Exception: Trips older than 1 day are only shown if includePastIncomplete is explicitly set to true
-      if (!filters?.dateFrom && !filters?.dateTo) {
+      // If showAllRides is true, skip date filtering entirely (for Data Management)
+      // But still apply includePastIncomplete filter if needed
+      if (filters?.showAllRides) {
+        // When showing all rides, still filter out incomplete trips older than 1 day if includePastIncomplete is false
+        if (!canViewPastIncomplete) {
+          const yesterday = new Date()
+          yesterday.setDate(yesterday.getDate() - 1)
+          const yesterdayStr = yesterday.toISOString().split('T')[0]
+          
+          filteredTrips = filteredTrips.filter((t) => {
+            if (!t.start_time) return true // Show trips without start_time
+            const tripDate = new Date(t.start_time).toISOString().split('T')[0]
+            
+            // If trip is today or future, always show
+            if (tripDate >= today) {
+              return true
+            }
+            
+            // If trip is from yesterday, show all (including incomplete)
+            if (tripDate === yesterdayStr) {
+              return true
+            }
+            
+            // If trip is older than yesterday
+            if (tripDate < yesterdayStr) {
+              // Only show completed/cancelled/no_show trips, hide incomplete ones
+              const incompleteStatuses = [
+                TRIP_STATUSES.CREATED,
+                TRIP_STATUSES.ASSIGNED,
+                TRIP_STATUSES.ENROUTE
+              ]
+              // Hide incomplete trips older than 1 day
+              return !incompleteStatuses.includes(t.status as any)
+            }
+            
+            return true
+          })
+        }
+        // If canViewPastIncomplete is true, show all rides including incomplete past trips
+      } else if (!filters?.dateFrom && !filters?.dateTo) {
+        // Filter by booking date (today and future) if no date range specified
+        // Exception: Show incomplete trips from yesterday for all users (1 day old only)
+        // Exception: Trips older than 1 day are only shown if includePastIncomplete is explicitly set to true
         const yesterday = new Date()
         yesterday.setDate(yesterday.getDate() - 1)
         const yesterdayStr = yesterday.toISOString().split('T')[0]
@@ -445,6 +471,28 @@ export function useAllBookings(filters?: {
           t.vehicle_reg?.toLowerCase().includes(filters.vehicle!.toLowerCase())
         )
       }
+      if (filters?.customer) {
+        filteredTrips = filteredTrips.filter((t) => 
+          t.customer_name?.toLowerCase().includes(filters.customer!.toLowerCase())
+        )
+      }
+      if (filters?.customerPhone) {
+        filteredTrips = filteredTrips.filter((t) => 
+          t.customer_phone?.toLowerCase().includes(filters.customerPhone!.toLowerCase())
+        )
+      }
+      if (filters?.hub) {
+        filteredTrips = filteredTrips.filter((t) => 
+          t.hub_name?.toLowerCase().includes(filters.hub!.toLowerCase())
+        )
+      }
+
+      // Sort by created_at descending (newest first) to ensure proper ordering
+      filteredTrips.sort((a, b) => {
+        const dateA = new Date(a.created_at).getTime()
+        const dateB = new Date(b.created_at).getTime()
+        return dateB - dateA // Descending order (newest first)
+      })
 
       return filteredTrips
     },

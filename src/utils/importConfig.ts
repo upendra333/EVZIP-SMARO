@@ -43,7 +43,7 @@ export const IMPORT_TABLES: ImportTableConfig[] = [
       { name: 'make', label: 'Make', type: 'string', required: false },
       { name: 'model', label: 'Model', type: 'string', required: false },
       { name: 'seats', label: 'Seats', type: 'number', required: false },
-      { name: 'status', label: 'Status', type: 'string', required: false, description: 'available, assigned, maintenance, inactive' },
+      { name: 'status', label: 'Status', type: 'string', required: false, description: 'available, ets, service' },
       { name: 'current_hub_id', label: 'Hub ID', type: 'uuid', required: false },
     ],
   },

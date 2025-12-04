@@ -16,6 +16,7 @@ import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { TripListItem } from '../../hooks/useTodayTrips'
 import { TRIP_TYPES } from '../../utils/constants'
+import { validateFutureDateTime, validateEndAfterStart, validatePositiveNumber } from '../../utils/validation'
 
 interface TripDrawerProps {
   trip: TripListItem | null
@@ -623,10 +624,12 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       // Submit fare change
       const fareChanged = pendingFare !== (currentFare !== null ? (currentFare / 100).toString() : '')
       if (fareChanged) {
-        const fareValue = pendingFare.trim() === '' ? null : parseFloat(pendingFare)
-        if (fareValue !== null && (isNaN(fareValue) || fareValue < 0)) {
-          alert('Please enter a valid fare amount')
-          return
+        if (pendingFare.trim() !== '') {
+          const fareValidation = validatePositiveNumber(pendingFare, 'Fare')
+          if (!fareValidation.isValid) {
+            alert(fareValidation.error)
+            return
+          }
         }
         await updateFare.mutateAsync(fareValue)
       }
@@ -635,16 +638,19 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       const estKmChanged = pendingEstKm !== (currentEstKm !== null ? currentEstKm.toString() : '')
       const actualKmChanged = pendingActualKm !== (currentActualKm !== null ? currentActualKm.toString() : '')
       if (estKmChanged || actualKmChanged) {
-        const estKmValue = pendingEstKm.trim() === '' ? null : parseFloat(pendingEstKm)
-        const actualKmValue = pendingActualKm.trim() === '' ? null : parseFloat(pendingActualKm)
-        
-        if (estKmValue !== null && (isNaN(estKmValue) || estKmValue < 0)) {
-          alert('Please enter a valid estimated km amount')
-          return
+        if (pendingEstKm.trim() !== '') {
+          const estKmValidation = validatePositiveNumber(pendingEstKm, 'Estimated KM')
+          if (!estKmValidation.isValid) {
+            alert(estKmValidation.error)
+            return
+          }
         }
-        if (actualKmValue !== null && (isNaN(actualKmValue) || actualKmValue < 0)) {
-          alert('Please enter a valid actual km amount')
-          return
+        if (pendingActualKm.trim() !== '') {
+          const actualKmValidation = validatePositiveNumber(pendingActualKm, 'Actual KM')
+          if (!actualKmValidation.isValid) {
+            alert(actualKmValidation.error)
+            return
+          }
         }
         
         await updateKms.mutateAsync({
@@ -657,12 +663,30 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       if (trip.type === TRIP_TYPES.AIRPORT || trip.type === TRIP_TYPES.MANUAL) {
         const pickupAtChanged = pendingPickupAt !== isoToDatetimeLocal(currentPickupAt)
         if (pickupAtChanged && pendingPickupAt) {
+          // Validate pickup time is not in the past
+          const pickupTimeValidation = validateFutureDateTime(pendingPickupAt)
+          if (!pickupTimeValidation.isValid) {
+            alert(pickupTimeValidation.error)
+            return
+          }
           await updatePickupAt.mutateAsync(pendingPickupAt)
         }
       } else if (trip.type === TRIP_TYPES.RENTAL) {
         const startAtChanged = pendingStartAt !== isoToDatetimeLocal(currentStartAt)
         const endAtChanged = pendingEndAt !== isoToDatetimeLocal(currentEndAt)
         if ((startAtChanged || endAtChanged) && pendingStartAt && pendingEndAt) {
+          // Validate start time is not in the past
+          const startTimeValidation = validateFutureDateTime(pendingStartAt)
+          if (!startTimeValidation.isValid) {
+            alert(startTimeValidation.error)
+            return
+          }
+          // Validate end time is after start time
+          const endTimeValidation = validateEndAfterStart(pendingStartAt, pendingEndAt)
+          if (!endTimeValidation.isValid) {
+            alert(endTimeValidation.error)
+            return
+          }
           await updateRentalTiming.mutateAsync({
             startAt: pendingStartAt,
             endAt: pendingEndAt,
@@ -822,6 +846,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                   type="datetime-local"
                   value={pendingPickupAt}
                   onChange={(e) => setPendingPickupAt(e.target.value)}
+                  min={new Date().toISOString().slice(0, 16)}
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
                 />
               )}
@@ -830,8 +855,15 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                   <input
                     type="datetime-local"
                     value={pendingStartAt}
-                    onChange={(e) => setPendingStartAt(e.target.value)}
+                    onChange={(e) => {
+                      setPendingStartAt(e.target.value)
+                      // Clear end_at if start_at changes and becomes after end_at
+                      if (e.target.value && pendingEndAt && e.target.value > pendingEndAt) {
+                        setPendingEndAt('')
+                      }
+                    }}
                     placeholder="Start Date & Time"
+                    min={new Date().toISOString().slice(0, 16)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
                   />
                   <input
@@ -839,6 +871,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                     value={pendingEndAt}
                     onChange={(e) => setPendingEndAt(e.target.value)}
                     placeholder="End Date & Time"
+                    min={pendingStartAt || new Date().toISOString().slice(0, 16)}
                     className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
                   />
                 </div>
@@ -860,8 +893,14 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
               <input
                 type="number"
                 step="0.01"
+                min="0.01"
                 value={pendingFare}
-                onChange={(e) => setPendingFare(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === '' || parseFloat(value) >= 0) {
+                    setPendingFare(value)
+                  }
+                }}
                 placeholder="Enter fare"
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text font-semibold"
               />
@@ -874,8 +913,14 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
               <input
                 type="number"
                 step="0.1"
+                min="0.1"
                 value={pendingEstKm}
-                onChange={(e) => setPendingEstKm(e.target.value)}
+                onChange={(e) => {
+                  const value = e.target.value
+                  if (value === '' || parseFloat(value) >= 0) {
+                    setPendingEstKm(value)
+                  }
+                }}
                 placeholder="Enter estimated km"
                 className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
               />
@@ -889,8 +934,14 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                 <input
                   type="number"
                   step="0.1"
+                  min="0.1"
                   value={pendingActualKm}
-                  onChange={(e) => setPendingActualKm(e.target.value)}
+                  onChange={(e) => {
+                    const value = e.target.value
+                    if (value === '' || parseFloat(value) >= 0) {
+                      setPendingActualKm(value)
+                    }
+                  }}
                   placeholder="Enter actual km"
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
                 />

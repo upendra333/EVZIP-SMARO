@@ -476,8 +476,8 @@ export function Reports() {
 
       // Get current vehicle status for maintenance/downtime tracking
       const currentStatus = vehicleStatusMap.get(vehicle.vehicleReg) || 'unknown'
-      const isInMaintenance = currentStatus === 'maintenance' || currentStatus === 'inactive'
-      const maintenanceStatus = isInMaintenance ? currentStatus : 'operational'
+      const isInService = currentStatus === 'service' || currentStatus === 'ets'
+      const maintenanceStatus = isInService ? currentStatus : 'operational'
 
       return {
         vehicleReg: vehicle.vehicleReg,
@@ -4144,7 +4144,8 @@ export function Reports() {
                           <td className="px-4 py-3 text-sm">
                             <span className={`px-2 py-1 rounded text-xs ${
                               vehicle.maintenanceStatus === 'operational' ? 'bg-green-100 text-green-800' :
-                              vehicle.maintenanceStatus === 'maintenance' ? 'bg-yellow-100 text-yellow-800' :
+                              vehicle.maintenanceStatus === 'service' ? 'bg-yellow-100 text-yellow-800' :
+                              vehicle.maintenanceStatus === 'ets' ? 'bg-blue-100 text-blue-800' :
                               'bg-red-100 text-red-800'
                             }`}>
                               {vehicle.maintenanceStatus}

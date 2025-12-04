@@ -29,7 +29,8 @@ export function useCreateDriver() {
       return result as Driver
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drivers'] })
+      queryClient.invalidateQueries({ queryKey: ['drivers'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allDrivers'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -69,7 +70,8 @@ export function useUpdateDriver() {
       return result as Driver
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drivers'] })
+      queryClient.invalidateQueries({ queryKey: ['drivers'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allDrivers'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
@@ -107,7 +109,8 @@ export function useDeleteDriver() {
       }
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['drivers'] })
+      queryClient.invalidateQueries({ queryKey: ['drivers'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allDrivers'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },
   })
