@@ -355,6 +355,7 @@ export function CreateSubscriptionModal({
                 <input
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.subscription_amount}
                   onChange={(e) => {
                     const value = e.target.value
@@ -362,8 +363,6 @@ export function CreateSubscriptionModal({
                       setFormData((prev) => ({ ...prev, subscription_amount: value }))
                     }
                   }}
-                  min="0.01"
-                  step="0.01"
                   placeholder="Enter subscription amount"
                   className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
                 />

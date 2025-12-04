@@ -222,11 +222,14 @@ export function CreateRentalBookingModal({
                 type="datetime-local"
                 value={formData.start_at}
                 onChange={(e) => {
-                  setFormData((prev) => ({ ...prev, start_at: e.target.value }))
-                  // Update end_at min if start_at changes
-                  if (e.target.value && prev.end_at && e.target.value > prev.end_at) {
-                    setFormData((prev) => ({ ...prev, end_at: '' }))
-                  }
+                  const newStartAt = e.target.value
+                  setFormData((prev) => {
+                    // Update end_at min if start_at changes and becomes after end_at
+                    if (newStartAt && prev.end_at && newStartAt > prev.end_at) {
+                      return { ...prev, start_at: newStartAt, end_at: '' }
+                    }
+                    return { ...prev, start_at: newStartAt }
+                  })
                 }}
                 required
                 min={new Date().toISOString().slice(0, 16)}

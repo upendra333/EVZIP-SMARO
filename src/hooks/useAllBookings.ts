@@ -205,7 +205,8 @@ export function useAllBookings(filters?: {
       const data = tripsData
 
       // Transform data to unified format
-      const trips: TripListItem[] = data.map((trip: any) => {
+      // Filter out trips where the corresponding ride data doesn't exist (deleted rides)
+      const trips: (TripListItem | null)[] = data.map((trip: any) => {
         if (trip.type === 'subscription') {
           const sr = subscriptionMap[trip.ref_id]
           if (sr) {
@@ -307,10 +308,12 @@ export function useAllBookings(filters?: {
         // Ride data doesn't exist (deleted), return null to filter out
         return null
       })
-      .filter((trip): trip is TripListItem => trip !== null) // Filter out null entries (deleted rides)
+      
+      // Filter out null entries (deleted rides) and cast to TripListItem[]
+      const validTrips = trips.filter((trip) => trip !== null) as TripListItem[]
 
       // Apply additional filters that require checking nested data
-      let filteredTrips = trips
+      let filteredTrips = validTrips
       
       // If showAllRides is true, skip date filtering entirely (for Data Management)
       // But still apply includePastIncomplete filter if needed
@@ -489,8 +492,8 @@ export function useAllBookings(filters?: {
 
       // Sort by created_at descending (newest first) to ensure proper ordering
       filteredTrips.sort((a, b) => {
-        const dateA = new Date(a.created_at).getTime()
-        const dateB = new Date(b.created_at).getTime()
+        const dateA = a.created_at ? new Date(a.created_at).getTime() : 0
+        const dateB = b.created_at ? new Date(b.created_at).getTime() : 0
         return dateB - dateA // Descending order (newest first)
       })
 

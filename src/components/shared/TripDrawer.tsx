@@ -631,6 +631,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
             return
           }
         }
+        const fareValue = pendingFare.trim() === '' ? null : parseFloat(pendingFare) * 100
         await updateFare.mutateAsync(fareValue)
       }
 
@@ -652,6 +653,9 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
             return
           }
         }
+        
+        const estKmValue = pendingEstKm.trim() === '' ? null : parseFloat(pendingEstKm)
+        const actualKmValue = pendingActualKm.trim() === '' ? null : parseFloat(pendingActualKm)
         
         await updateKms.mutateAsync({
           estKm: estKmValue,
