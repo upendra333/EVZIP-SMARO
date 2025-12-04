@@ -7,6 +7,8 @@ import { PERMISSIONS } from '../utils/permissions'
 import { ROLES } from '../utils/constants'
 import type { Role } from '../utils/types'
 import type { CreateUserData, UpdateUserData } from '../hooks/useManageUsers'
+import { ChangePasswordModal } from '../components/shared/ChangePasswordModal'
+import { useChangePassword } from '../hooks/useChangePassword'
 
 export function UserManagement() {
   const { data: users, isLoading } = useUsers()
@@ -15,9 +17,11 @@ export function UserManagement() {
   const createMutation = useCreateUser()
   const updateMutation = useUpdateUser()
   const deleteMutation = useDeleteUser()
+  const changePasswordMutation = useChangePassword()
 
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
+  const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null)
 
   const editingUser = users?.find((u) => u.id === editingUserId)
 
@@ -33,6 +37,18 @@ export function UserManagement() {
   const canCreate = can(PERMISSIONS.MANAGE_USERS)
   const canEdit = can(PERMISSIONS.MANAGE_USERS)
   const canDelete = can(PERMISSIONS.MANAGE_USERS)
+  const canResetPassword = can(PERMISSIONS.MANAGE_USERS)
+
+  const handleResetPassword = async (oldPassword: string, newPassword: string) => {
+    if (!resetPasswordUserId) {
+      throw new Error('User ID not found')
+    }
+    await changePasswordMutation.mutateAsync({
+      userId: resetPasswordUserId,
+      newPassword,
+      requireOldPassword: false, // Admins don't need old password
+    })
+  }
 
   if (editingUserId && editingUser) {
     return (
@@ -127,25 +143,35 @@ export function UserManagement() {
                       </span>
                     </td>
                     <td className="px-4 py-3 text-right text-sm">
-                      {canEdit && (
-                        <button
-                          onClick={() => setEditingUserId(user.id)}
-                          className="text-primary hover:text-primary/80 mr-3"
-                        >
-                          Edit
-                        </button>
-                      )}
-                      {canDelete && (
-                        <button
-                          onClick={() => handleDelete(user.id)}
-                          className="text-red-600 hover:text-red-800"
-                        >
-                          Delete
-                        </button>
-                      )}
-                      {!canEdit && !canDelete && (
-                        <span className="text-gray-400 text-xs">No actions</span>
-                      )}
+                      <div className="flex items-center justify-end gap-2">
+                        {canEdit && (
+                          <button
+                            onClick={() => setEditingUserId(user.id)}
+                            className="text-primary hover:text-primary/80"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        {canResetPassword && (
+                          <button
+                            onClick={() => setResetPasswordUserId(user.id)}
+                            className="text-blue-600 hover:text-blue-800"
+                          >
+                            Reset Password
+                          </button>
+                        )}
+                        {canDelete && (
+                          <button
+                            onClick={() => handleDelete(user.id)}
+                            className="text-red-600 hover:text-red-800"
+                          >
+                            Delete
+                          </button>
+                        )}
+                        {!canEdit && !canResetPassword && !canDelete && (
+                          <span className="text-gray-400 text-xs">No actions</span>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 )
@@ -157,6 +183,14 @@ export function UserManagement() {
           )}
         </div>
       )}
+
+      <ChangePasswordModal
+        isOpen={resetPasswordUserId !== null}
+        onClose={() => setResetPasswordUserId(null)}
+        onSubmit={handleResetPassword}
+        requireOldPassword={false}
+        isLoading={changePasswordMutation.isPending}
+      />
     </div>
   )
 }
