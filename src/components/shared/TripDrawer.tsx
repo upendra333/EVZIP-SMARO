@@ -364,7 +364,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
   })
 
   const updateFare = useMutation({
-    mutationFn: async (fare: number | null) => {
+    // Accept fare in rupees; convert to paise before saving
+    mutationFn: async (fareInRupees: number | null) => {
       if (!trip) throw new Error('No trip selected')
 
       const tableName = trip.type === TRIP_TYPES.SUBSCRIPTION
@@ -375,9 +376,11 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
         ? 'rental_bookings'
         : 'manual_rides'
 
+      const fareInPaise = fareInRupees === null ? null : Math.round(fareInRupees * 100)
+
       const { error } = await supabase
         .from(tableName)
-        .update({ fare: fare ? fare * 100 : null, updated_at: new Date().toISOString() })
+        .update({ fare: fareInPaise, updated_at: new Date().toISOString() })
         .eq('id', trip.ref_id)
 
       if (error) throw error
@@ -631,7 +634,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
             return
           }
         }
-        const fareValue = pendingFare.trim() === '' ? null : parseFloat(pendingFare) * 100
+        const fareValue = pendingFare.trim() === '' ? null : parseFloat(pendingFare)
         await updateFare.mutateAsync(fareValue)
       }
 
