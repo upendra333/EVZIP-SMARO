@@ -2719,7 +2719,6 @@ function RidesTab() {
               <option value="assigned">Assigned</option>
               <option value="enroute">Enroute</option>
               <option value="completed">Completed</option>
-              <option value="no_show">No Show</option>
               <option value="cancelled">Cancelled</option>
             </select>
           </div>

@@ -60,7 +60,6 @@ export function FiltersBar({ filters, onFiltersChange }: FiltersBarProps) {
             <option value={TRIP_STATUSES.ASSIGNED}>Assigned</option>
             <option value={TRIP_STATUSES.ENROUTE}>Enroute</option>
             <option value={TRIP_STATUSES.COMPLETED}>Completed</option>
-            <option value={TRIP_STATUSES.NO_SHOW}>No Show</option>
             <option value={TRIP_STATUSES.CANCELLED}>Cancelled</option>
           </select>
         </div>

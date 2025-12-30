@@ -163,8 +163,8 @@ export function Dashboard() {
         totalKmToday += kmValue
       }
 
-      // Bookings Overview - show trips based on start time, excluding cancelled/no-show
-      const isNotCancelled = booking.status !== TRIP_STATUSES.CANCELLED && booking.status !== TRIP_STATUSES.NO_SHOW
+      // Bookings Overview - show trips based on start time, excluding cancelled
+      const isNotCancelled = booking.status !== TRIP_STATUSES.CANCELLED
       
       if (isNotCancelled && startTime) {
         // Due next 60 minutes - show trips with start time within next 60 min (regardless of status)
@@ -189,7 +189,7 @@ export function Dashboard() {
         active++
       } else if (booking.status === TRIP_STATUSES.CREATED || booking.status === TRIP_STATUSES.ASSIGNED) {
         yetToAssign++
-      } else if (booking.status === TRIP_STATUSES.CANCELLED || booking.status === TRIP_STATUSES.NO_SHOW) {
+      } else if (booking.status === TRIP_STATUSES.CANCELLED) {
         cancelledNoShow++
       }
     })

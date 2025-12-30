@@ -45,11 +45,6 @@ export function useTripStatus() {
         }
         transitions.push({
           from: 'assigned',
-          to: 'no_show',
-          label: 'Mark No Show',
-        })
-        transitions.push({
-          from: 'assigned',
           to: 'cancelled',
           label: 'Cancel',
           requiresReason: true,

@@ -278,7 +278,7 @@ export function Reports() {
       const avgKmPerTrip = totalTrips > 0 ? totalKm / totalTrips : 0
       
       const completedTrips = trips.filter(t => t.status === 'completed').length
-      const cancelledTrips = trips.filter(t => t.status === 'cancelled' || t.status === 'no_show').length
+      const cancelledTrips = trips.filter(t => t.status === 'cancelled').length
       const completionRate = totalTrips > 0 ? (completedTrips / totalTrips) * 100 : 0
       const cancellationRate = totalTrips > 0 ? (cancelledTrips / totalTrips) * 100 : 0
 
@@ -1387,7 +1387,7 @@ export function Reports() {
     }
   }, [peakHoursData])
 
-  // Calculate Cancellation & No-Show Metrics
+  // Calculate Cancellation Metrics
   const cancellationMetrics = useMemo(() => {
     if (!cancellationData || cancellationData.length === 0) {
       return null
@@ -1395,64 +1395,54 @@ export function Reports() {
 
     const totalTrips = cancellationData.length
     const cancelledTrips = cancellationData.filter(t => t.status === 'cancelled').length
-    const noShowTrips = cancellationData.filter(t => t.status === 'no_show').length
     const cancellationRate = totalTrips > 0 ? (cancelledTrips / totalTrips) * 100 : 0
-    const noShowRate = totalTrips > 0 ? (noShowTrips / totalTrips) * 100 : 0
 
     // Cancellations by trip type
     const byTripType = {
-      subscription: { cancelled: 0, noShow: 0 },
-      airport: { cancelled: 0, noShow: 0 },
-      rental: { cancelled: 0, noShow: 0 },
-      manual: { cancelled: 0, noShow: 0 },
+      subscription: { cancelled: 0 },
+      airport: { cancelled: 0 },
+      rental: { cancelled: 0 },
+      manual: { cancelled: 0 },
     }
     cancellationData.forEach(trip => {
       const type = trip.type as 'subscription' | 'airport' | 'rental' | 'manual'
       if (trip.status === 'cancelled') {
         byTripType[type].cancelled += 1
-      } else if (trip.status === 'no_show') {
-        byTripType[type].noShow += 1
       }
     })
 
     // Cancellations by hub
-    const byHub = new Map<string, { cancelled: number; noShow: number }>()
+    const byHub = new Map<string, { cancelled: number }>()
     cancellationData.forEach(trip => {
       if (trip.hub_name) {
-        const current = byHub.get(trip.hub_name) || { cancelled: 0, noShow: 0 }
+        const current = byHub.get(trip.hub_name) || { cancelled: 0 }
         if (trip.status === 'cancelled') {
           current.cancelled += 1
-        } else if (trip.status === 'no_show') {
-          current.noShow += 1
         }
         byHub.set(trip.hub_name, current)
       }
     })
 
     // Cancellations by driver
-    const byDriver = new Map<string, { cancelled: number; noShow: number }>()
+    const byDriver = new Map<string, { cancelled: number }>()
     cancellationData.forEach(trip => {
       if (trip.driver_name) {
-        const current = byDriver.get(trip.driver_name) || { cancelled: 0, noShow: 0 }
+        const current = byDriver.get(trip.driver_name) || { cancelled: 0 }
         if (trip.status === 'cancelled') {
           current.cancelled += 1
-        } else if (trip.status === 'no_show') {
-          current.noShow += 1
         }
         byDriver.set(trip.driver_name, current)
       }
     })
 
     // Customer cancellation patterns
-    const byCustomer = new Map<string, { cancelled: number; noShow: number; customerName: string }>()
+    const byCustomer = new Map<string, { cancelled: number; customerName: string }>()
     cancellationData.forEach(trip => {
       if (trip.customer_name) {
         const key = `${trip.customer_name}_${trip.customer_phone || ''}`
-        const current = byCustomer.get(key) || { cancelled: 0, noShow: 0, customerName: trip.customer_name }
+        const current = byCustomer.get(key) || { cancelled: 0, customerName: trip.customer_name }
         if (trip.status === 'cancelled') {
           current.cancelled += 1
-        } else if (trip.status === 'no_show') {
-          current.noShow += 1
         }
         byCustomer.set(key, current)
       }
@@ -1461,15 +1451,13 @@ export function Reports() {
     return {
       totalTrips,
       cancelledTrips,
-      noShowTrips,
       cancellationRate,
-      noShowRate,
       byTripType,
       byHub: Array.from(byHub.entries()).map(([hub, data]) => ({ hub, ...data })),
       byDriver: Array.from(byDriver.entries()).map(([driver, data]) => ({ driver, ...data })),
       byCustomer: Array.from(byCustomer.values())
-        .filter(c => c.cancelled > 0 || c.noShow > 0)
-        .sort((a, b) => (b.cancelled + b.noShow) - (a.cancelled + a.noShow)),
+        .filter(c => c.cancelled > 0)
+        .sort((a, b) => b.cancelled - a.cancelled),
     }
   }, [cancellationData])
 
@@ -2374,10 +2362,8 @@ export function Reports() {
       'Category',
       'Trip Type/Hub/Driver/Customer',
       'Cancelled',
-      'No Show',
       'Total',
-      'Cancellation Rate (%)',
-      'No Show Rate (%)'
+      'Cancellation Rate (%)'
     ]
 
     // Summary
@@ -2385,65 +2371,51 @@ export function Reports() {
       'Category': 'Summary',
       'Trip Type/Hub/Driver/Customer': 'Total',
       'Cancelled': cancellationMetrics.cancelledTrips,
-      'No Show': cancellationMetrics.noShowTrips,
       'Total': cancellationMetrics.totalTrips,
       'Cancellation Rate (%)': cancellationMetrics.cancellationRate.toFixed(2),
-      'No Show Rate (%)': cancellationMetrics.noShowRate.toFixed(2),
     })
 
     // By trip type
     Object.entries(cancellationMetrics.byTripType).forEach(([type, data]) => {
-      const total = data.cancelled + data.noShow
       exportData.push({
         'Category': 'By Trip Type',
         'Trip Type/Hub/Driver/Customer': type,
         'Cancelled': data.cancelled,
-        'No Show': data.noShow,
-        'Total': total,
+        'Total': data.cancelled,
         'Cancellation Rate (%)': '',
-        'No Show Rate (%)': '',
       })
     })
 
     // By hub
     cancellationMetrics.byHub.forEach((hub) => {
-      const total = hub.cancelled + hub.noShow
       exportData.push({
         'Category': 'By Hub',
         'Trip Type/Hub/Driver/Customer': hub.hub,
         'Cancelled': hub.cancelled,
-        'No Show': hub.noShow,
-        'Total': total,
+        'Total': hub.cancelled,
         'Cancellation Rate (%)': '',
-        'No Show Rate (%)': '',
       })
     })
 
     // By driver
     cancellationMetrics.byDriver.forEach((driver) => {
-      const total = driver.cancelled + driver.noShow
       exportData.push({
         'Category': 'By Driver',
         'Trip Type/Hub/Driver/Customer': driver.driver,
         'Cancelled': driver.cancelled,
-        'No Show': driver.noShow,
-        'Total': total,
+        'Total': driver.cancelled,
         'Cancellation Rate (%)': '',
-        'No Show Rate (%)': '',
       })
     })
 
     // By customer
     cancellationMetrics.byCustomer.forEach((customer) => {
-      const total = customer.cancelled + customer.noShow
       exportData.push({
         'Category': 'By Customer',
         'Trip Type/Hub/Driver/Customer': customer.customerName,
         'Cancelled': customer.cancelled,
-        'No Show': customer.noShow,
-        'Total': total,
+        'Total': customer.cancelled,
         'Cancellation Rate (%)': '',
-        'No Show Rate (%)': '',
       })
     })
 
@@ -2455,7 +2427,7 @@ export function Reports() {
       ? `${new Date().getFullYear()}_${new Date().getMonth() + 1}`
       : `${cancellationStartDate}_to_${cancellationEndDate}`
 
-    exportToCSV(exportData, `cancellation_noshow_report_${dateRangeLabel}`, allColumns)
+    exportToCSV(exportData, `cancellation_report_${dateRangeLabel}`, allColumns)
   }
 
   const handleSubscriptionPerfExport = () => {
@@ -3608,7 +3580,6 @@ export function Reports() {
                     <option value="enroute">Enroute</option>
                     <option value="completed">Completed</option>
                     <option value="cancelled">Cancelled</option>
-                    <option value="no_show">No Show</option>
                   </select>
                 </div>
                 <div>
@@ -3723,7 +3694,6 @@ export function Reports() {
                                 trip.status === 'enroute' ? 'bg-blue-100 text-blue-800' :
                                 trip.status === 'assigned' ? 'bg-yellow-100 text-yellow-800' :
                                 trip.status === 'cancelled' ? 'bg-red-100 text-red-800' :
-                                trip.status === 'no_show' ? 'bg-orange-100 text-orange-800' :
                                 'bg-gray-100 text-gray-800'
                               }`}>
                                 {trip.status}
@@ -5375,14 +5345,9 @@ export function Reports() {
                       <div className="text-xl font-bold text-red-600">{cancellationMetrics.cancelledTrips}</div>
                       <div className="text-xs text-gray-500 mt-1">{cancellationMetrics.cancellationRate.toFixed(1)}%</div>
                     </div>
-                    <div className="text-center p-4 bg-orange-50 rounded-lg">
-                      <div className="text-sm text-gray-600">No Show</div>
-                      <div className="text-xl font-bold text-orange-600">{cancellationMetrics.noShowTrips}</div>
-                      <div className="text-xs text-gray-500 mt-1">{cancellationMetrics.noShowRate.toFixed(1)}%</div>
-                    </div>
                     <div className="text-center p-4 bg-green-50 rounded-lg">
                       <div className="text-sm text-gray-600">Completed</div>
-                      <div className="text-xl font-bold text-green-600">{cancellationMetrics.totalTrips - cancellationMetrics.cancelledTrips - cancellationMetrics.noShowTrips}</div>
+                      <div className="text-xl font-bold text-green-600">{cancellationMetrics.totalTrips - cancellationMetrics.cancelledTrips}</div>
                     </div>
                   </div>
                 </div>
@@ -5398,7 +5363,6 @@ export function Reports() {
                         <tr>
                           <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Trip Type</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cancelled</th>
-                          <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">No Show</th>
                           <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                         </tr>
                       </thead>
@@ -5407,8 +5371,7 @@ export function Reports() {
                           <tr key={type} className="hover:bg-gray-50">
                             <td className="px-4 py-3 text-sm font-medium text-gray-900 capitalize">{type}</td>
                             <td className="px-4 py-3 text-sm text-gray-900 text-right">{data.cancelled}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 text-right">{data.noShow}</td>
-                            <td className="px-4 py-3 text-sm text-gray-900 text-right">{data.cancelled + data.noShow}</td>
+                            <td className="px-4 py-3 text-sm text-gray-900 text-right">{data.cancelled}</td>
                           </tr>
                         ))}
                       </tbody>
@@ -5428,7 +5391,6 @@ export function Reports() {
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hub</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cancelled</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">No Show</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                           </tr>
                         </thead>
@@ -5437,8 +5399,7 @@ export function Reports() {
                             <tr key={idx} className="hover:bg-gray-50">
                               <td className="px-4 py-3 text-sm font-medium text-gray-900">{hub.hub}</td>
                               <td className="px-4 py-3 text-sm text-gray-900 text-right">{hub.cancelled}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{hub.noShow}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{hub.cancelled + hub.noShow}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{hub.cancelled}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -5459,7 +5420,6 @@ export function Reports() {
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Driver</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cancelled</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">No Show</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                           </tr>
                         </thead>
@@ -5468,8 +5428,7 @@ export function Reports() {
                             <tr key={idx} className="hover:bg-gray-50">
                               <td className="px-4 py-3 text-sm font-medium text-gray-900">{driver.driver}</td>
                               <td className="px-4 py-3 text-sm text-gray-900 text-right">{driver.cancelled}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{driver.noShow}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{driver.cancelled + driver.noShow}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{driver.cancelled}</td>
                             </tr>
                           ))}
                         </tbody>
@@ -5490,7 +5449,6 @@ export function Reports() {
                           <tr>
                             <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Customer</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cancelled</th>
-                            <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">No Show</th>
                             <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Total</th>
                           </tr>
                         </thead>
@@ -5499,8 +5457,7 @@ export function Reports() {
                             <tr key={idx} className="hover:bg-gray-50">
                               <td className="px-4 py-3 text-sm font-medium text-gray-900">{customer.customerName}</td>
                               <td className="px-4 py-3 text-sm text-gray-900 text-right">{customer.cancelled}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{customer.noShow}</td>
-                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{customer.cancelled + customer.noShow}</td>
+                              <td className="px-4 py-3 text-sm text-gray-900 text-right">{customer.cancelled}</td>
                             </tr>
                           ))}
                         </tbody>
