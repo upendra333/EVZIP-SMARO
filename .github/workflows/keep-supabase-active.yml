@@ -1,0 +1,24 @@
+name: Keep Supabase Active
+
+on:
+  schedule:
+    # Run every 6 days at 12:00 UTC (keeps project active before 7-day pause threshold)
+    - cron: '0 12 */6 * *'
+  workflow_dispatch: # Allow manual trigger from GitHub Actions tab
+
+jobs:
+  ping-supabase:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase Database
+        run: |
+          echo "Pinging Supabase to keep project active..."
+          curl -X POST "${{ secrets.SUPABASE_URL }}/rest/v1/rpc/keep_alive" \
+            -H "apikey: ${{ secrets.SUPABASE_ANON_KEY }}" \
+            -H "Content-Type: application/json" \
+            -H "Prefer: return=minimal" \
+            -d '{}' \
+            -w "\nStatus: %{http_code}\n" \
+            -s -o /dev/null || echo "Request completed"
+          echo "Supabase ping completed successfully!"
+

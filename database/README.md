@@ -10,6 +10,7 @@ Run these SQL files in Supabase SQL Editor in the following order:
 2. **02_functions.sql** - Creates RPC functions (today_metrics, advance_trip_status, etc.)
 3. **03_triggers.sql** - Creates advanced triggers (overlap checking, auto-create trips, etc.)
 4. **04_seed_data.sql** - Inserts sample data for testing (optional)
+5. **22_create_keep_alive_function.sql** - Creates keep_alive function for preventing Supabase project pause (for free plan)
 
 ## Steps
 
@@ -152,6 +153,25 @@ If RPC functions fail:
 - Check function permissions
 - Verify data types match
 
+## Keep Supabase Active (Free Plan)
+
+To prevent your Supabase project from pausing after 7 days of inactivity:
+
+1. **Run the keep-alive function:**
+   - Execute `22_create_keep_alive_function.sql` in Supabase SQL Editor
+
+2. **Set up GitHub Actions:**
+   - Go to your GitHub repository → Settings → Secrets and variables → Actions
+   - Add two secrets:
+     - `SUPABASE_URL`: Your Supabase project URL (e.g., `https://xxxxx.supabase.co`)
+     - `SUPABASE_ANON_KEY`: Your Supabase anon/public key (found in Settings > API)
+   - The workflow (`.github/workflows/keep-supabase-active.yml`) will automatically run every 6 days
+
+3. **Test the workflow:**
+   - Go to Actions tab in GitHub
+   - Find "Keep Supabase Active" workflow
+   - Click "Run workflow" to test manually
+
 ## Next Steps
 
 After database setup:
@@ -159,4 +179,5 @@ After database setup:
 2. Set up Supabase client in the app (see `src/lib/supabase.ts`)
 3. Test connection from the frontend
 4. Proceed with building the UI components
+5. Set up GitHub Actions secrets for keep-alive (see above)
 
