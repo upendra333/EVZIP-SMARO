@@ -3,6 +3,7 @@ import { exportToCSV } from '../utils/csvExport'
 import { parseGoogleSpreadsheetId } from '../utils/googleSheets'
 import { useGoogleSpreadsheetTabs } from '../hooks/useGoogleSpreadsheetTabs'
 import { useGoogleSheetCsvMulti } from '../hooks/useGoogleSheetCsvMulti'
+import { useOperator } from '../hooks/useOperator'
 import type { GoogleSheetTab } from '../utils/googleSheets'
 
 type RideHailingFilters = {
@@ -81,6 +82,9 @@ type NormalizedTrip = {
 }
 
 export function RideHailing() {
+  const { isAdmin } = useOperator()
+  const isSourceSectionDisabled = !isAdmin()
+
   const defaultSheetUrl =
     'https://docs.google.com/spreadsheets/d/1W89iEvjkkDG9JASIOTDtQE6QSRCtdgzuQb-hXShcy_Y/edit?usp=sharing'
 
@@ -277,6 +281,8 @@ export function RideHailing() {
               onBlur={persistSettings}
               placeholder="Paste Google Sheet URL..."
               className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              disabled={isSourceSectionDisabled}
+              readOnly={isSourceSectionDisabled}
             />
             {!spreadsheetId && (
               <p className="mt-2 text-xs text-red-600">Could not detect spreadsheet ID from the URL.</p>
@@ -307,6 +313,7 @@ export function RideHailing() {
                 className={`w-full px-3 py-2 border rounded-lg ${
                   autoRefresh ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-700'
                 }`}
+                disabled={isSourceSectionDisabled}
               >
                 {autoRefresh ? 'ON (30s)' : 'OFF'}
               </button>
@@ -316,8 +323,15 @@ export function RideHailing() {
             </div>
           </div>
         </div>
+        {isSourceSectionDisabled && (
+          <p className="mt-4 text-xs text-amber-700">
+            Source settings can only be changed by admins.
+          </p>
+        )}
+      </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mt-6">
+      <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Hub</label>
             <select
@@ -372,7 +386,6 @@ export function RideHailing() {
             />
           </div>
         </div>
-
       </div>
 
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
