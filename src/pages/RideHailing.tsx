@@ -122,11 +122,6 @@ export function RideHailing() {
     refetchIntervalMs: autoRefresh ? 30_000 : undefined,
   })
 
-  const headers = useMemo(() => {
-    const first = rows[0]
-    return first ? Object.keys(first) : []
-  }, [rows])
-
   const normalizedTrips = useMemo<NormalizedTrip[]>(() => {
     return rows
       .map((r) => {
