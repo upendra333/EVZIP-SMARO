@@ -7,6 +7,9 @@ export const PERMISSIONS = {
   // Dashboard
   VIEW_DASHBOARD: 'view_dashboard',
   
+  // Ride Hailing (Google Sheet reconciliation)
+  VIEW_RIDE_HAILING: 'view_ride_hailing',
+
   // Bookings
   VIEW_BOOKINGS: 'view_bookings',
   CREATE_BOOKING: 'create_booking',
@@ -83,6 +86,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   
   supervisor: [
     PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_RIDE_HAILING,
     PERMISSIONS.VIEW_BOOKINGS,
     PERMISSIONS.CREATE_BOOKING,
     PERMISSIONS.EDIT_BOOKING,
@@ -109,6 +113,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   
   manager: [
     PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_RIDE_HAILING,
     PERMISSIONS.VIEW_BOOKINGS,
     PERMISSIONS.CREATE_BOOKING,
     PERMISSIONS.EDIT_BOOKING,
@@ -178,7 +183,9 @@ export function checkPermissionWithDB(
 ): boolean {
   // If database permissions are available, use them
   if (dbPermissions && dbPermissions[role]) {
-    return dbPermissions[role].includes(permission)
+    // Prefer DB as the main source, but fallback to hardcoded so newly added
+    // permissions still work before migrations/DB updates are applied.
+    return dbPermissions[role].includes(permission) || hasPermission(role, permission)
   }
   
   // Fallback to hardcoded permissions
@@ -188,6 +195,7 @@ export function checkPermissionWithDB(
 // Get human-readable permission labels
 export const PERMISSION_LABELS: Record<Permission, string> = {
   [PERMISSIONS.VIEW_DASHBOARD]: 'View Dashboard',
+  [PERMISSIONS.VIEW_RIDE_HAILING]: 'View Ride Hailing',
   [PERMISSIONS.VIEW_BOOKINGS]: 'View Bookings',
   [PERMISSIONS.CREATE_BOOKING]: 'Create Booking',
   [PERMISSIONS.EDIT_BOOKING]: 'Edit Booking',
@@ -240,6 +248,9 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
 export const PERMISSION_CATEGORIES = {
   Dashboard: [
     PERMISSIONS.VIEW_DASHBOARD,
+  ],
+  'Ride Hailing': [
+    PERMISSIONS.VIEW_RIDE_HAILING,
   ],
   Bookings: [
     PERMISSIONS.VIEW_BOOKINGS,

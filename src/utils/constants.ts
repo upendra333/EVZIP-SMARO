@@ -12,6 +12,7 @@ export const ROUTES = {
   SUBSCRIPTIONS: '/subscriptions',
   AIRPORT: '/airport',
   RENTALS: '/rentals',
+  RIDE_HAILING: '/ride-hailing',
   REPORTS: '/reports',
   ANALYTICS: '/analytics',
   IMPORTS: '/imports',
@@ -24,6 +25,7 @@ export const ROUTES = {
 
 export const NAVIGATION_ITEMS = [
   { name: 'Dashboard', path: ROUTES.DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_DASHBOARD },
+  { name: 'Ride Hailing', path: ROUTES.RIDE_HAILING, icon: '🚕', permission: PERMISSIONS.VIEW_RIDE_HAILING },
   { name: 'Reports', path: ROUTES.REPORTS, icon: '📈', permission: PERMISSIONS.VIEW_REPORTS },
   { name: 'Analytics', path: ROUTES.ANALYTICS, icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
   { name: 'Data Management', path: ROUTES.DATA_MANAGEMENT, icon: '🗂️', permission: PERMISSIONS.VIEW_CUSTOMERS },
