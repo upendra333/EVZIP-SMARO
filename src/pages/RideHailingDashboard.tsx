@@ -246,8 +246,14 @@ export function RideHailingDashboard() {
         const cash = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.cash) || getRowValueByCandidates(r, ['cash'], 'contains'))
         const uber = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.uber) || getRowValueByCandidates(r, ['uber'], 'contains'))
         const tip = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.tip) || getRowValueByCandidates(r, ['tip'], 'contains'))
+        const vehicleFromRow = getRowValueByCandidates(
+          r,
+          ['vehicle number', 'vehicle no', 'number', 'reg no', 'registration', 'cab number'],
+          'contains'
+        )
+        const vehicleFromSheet = vehicleNumberFromTabName(r.__sheet || '')
         return {
-          vehicleNumber: vehicleNumberFromTabName(r.__sheet || ''),
+          vehicleNumber: vehicleFromRow || vehicleFromSheet,
           timestampDate: tsDate,
           hub:
             getRowValueByColumnLetter(r, columnMap.hub) ||

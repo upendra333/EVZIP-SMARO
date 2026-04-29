@@ -175,9 +175,15 @@ export function RideHailing() {
           getRowValueByColumnLetter(r, savedColumnMap.tip) || getRowValueByCandidates(r, ['tip'], 'contains')
         )
         const total = upi + cash + uber + tip
+        const vehicleFromRow = getRowValueByCandidates(
+          r,
+          ['vehicle number', 'vehicle no', 'number', 'reg no', 'registration', 'cab number'],
+          'contains'
+        )
+        const vehicleFromSheet = vehicleNumberFromTabName(r.__sheet || '')
 
         return {
-          vehicleNumber: vehicleNumberFromTabName(r.__sheet || ''),
+          vehicleNumber: vehicleFromRow || vehicleFromSheet,
           timestamp: tsRaw,
           timestampMs: tsDate ? tsDate.getTime() : Number.NEGATIVE_INFINITY,
           timestampDate: tsDate,
