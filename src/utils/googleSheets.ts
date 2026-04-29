@@ -28,162 +28,104 @@ export function buildGoogleSheetCsvUrl(source: GoogleSheetCsvSource): string {
 }
 
 export function extractGoogleSheetTabsFromHtml(html: string): GoogleSheetTab[] {
-  // Public sheet pages typically contain JSON blobs that include "sheetId" and "name"
-  // We use a conservative regex to avoid hard-coding Google’s internal structures.
   const tabs: GoogleSheetTab[] = []
   const seen = new Set<string>()
+  const addTab = (gid: string, name: string) => {
+    const trimmedName = String(name || '').trim()
+    const trimmedGid = String(gid || '').trim()
+    if (!trimmedName) return
+    const key = `${trimmedGid}:${trimmedName}`
+    if (seen.has(key)) return
+    seen.add(key)
+    tabs.push({ gid: trimmedGid, name: trimmedName })
+  }
+  const decodeHtml = (raw: string) =>
+    raw
+      .replace(/&amp;/g, '&')
+      .replace(/&lt;/g, '<')
+      .replace(/&gt;/g, '>')
+      .replace(/&quot;/g, '"')
+      .replace(/&#39;/g, "'")
+      .trim()
 
+  // Public sheet pages typically contain JSON blobs that include "sheetId" and "name".
   const re = /"sheetId":(\d+)[\s\S]{0,200}?"name":"([^"]+)"/g
   for (;;) {
     const m = re.exec(html)
     if (!m) break
-    const gid = m[1]
-    const name = m[2]
-    const key = `${gid}:${name}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    tabs.push({ gid, name })
+    addTab(m[1], m[2])
   }
 
-  // Fallback: sometimes "name" appears before "sheetId"
-  if (tabs.length === 0) {
-    const re2 = /"name":"([^"]+)"[\s\S]{0,200}?"sheetId":(\d+)/g
-    for (;;) {
-      const m = re2.exec(html)
-      if (!m) break
-      const name = m[1]
-      const gid = m[2]
-      const key = `${gid}:${name}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      tabs.push({ gid, name })
-    }
+  // Sometimes "name" appears before "sheetId".
+  const re2 = /"name":"([^"]+)"[\s\S]{0,200}?"sheetId":(\d+)/g
+  for (;;) {
+    const m = re2.exec(html)
+    if (!m) break
+    addTab(m[2], m[1])
   }
 
-  // Additional fallback: some Google payloads expose sheet titles under
-  // `properties.title` rather than `name`.
-  if (tabs.length === 0) {
-    const reTitle1 = /"sheetId":(\d+)[\s\S]{0,260}?"title":"([^"]+)"/g
-    for (;;) {
-      const m = reTitle1.exec(html)
-      if (!m) break
-      const gid = m[1]
-      const name = m[2]
-      const key = `${gid}:${name}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      tabs.push({ gid, name })
-    }
+  // Some payloads expose titles under `properties.title` rather than `name`.
+  const reTitle1 = /"sheetId":(\d+)[\s\S]{0,260}?"title":"([^"]+)"/g
+  for (;;) {
+    const m = reTitle1.exec(html)
+    if (!m) break
+    addTab(m[1], m[2])
   }
 
-  if (tabs.length === 0) {
-    const reTitle2 = /"title":"([^"]+)"[\s\S]{0,260}?"sheetId":(\d+)/g
-    for (;;) {
-      const m = reTitle2.exec(html)
-      if (!m) break
-      const name = m[1]
-      const gid = m[2]
-      const key = `${gid}:${name}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      tabs.push({ gid, name })
-    }
+  const reTitle2 = /"title":"([^"]+)"[\s\S]{0,260}?"sheetId":(\d+)/g
+  for (;;) {
+    const m = reTitle2.exec(html)
+    if (!m) break
+    addTab(m[2], m[1])
   }
 
-  // Structured sheet metadata fallback:
-  // "properties":{"sheetId":123,"title":"XXXX", ...}
-  if (tabs.length === 0) {
-    const reProps = /"properties":\{"sheetId":(\d+),"title":"([^"]+)"/g
-    for (;;) {
-      const m = reProps.exec(html)
-      if (!m) break
-      const gid = m[1]
-      const name = m[2]
-      const key = `${gid}:${name}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      tabs.push({ gid, name })
-    }
+  // Structured metadata fallback: "properties":{"sheetId":123,"title":"XXXX", ...}
+  const reProps = /"properties":\{"sheetId":(\d+),"title":"([^"]+)"/g
+  for (;;) {
+    const m = reProps.exec(html)
+    if (!m) break
+    addTab(m[1], m[2])
   }
 
-  // Newer sheet pages often render tab captions in DOM without exposing sheetId nearby.
-  // In this mode we can still fetch CSV by `sheet` name, so synthesize stable gids.
-  if (tabs.length === 0) {
-    const re3 = /docs-sheet-tab-caption">([\s\S]*?)<\/div>/g
-    for (;;) {
-      const m = re3.exec(html)
-      if (!m) break
-      const rawName = m[1] ?? ''
-      const name = rawName
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .trim()
-      if (!name) continue
-
-      const key = `name:${name}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      // No reliable gid in this fallback path; let callers fetch by sheet name only.
-      tabs.push({ gid: '', name })
-    }
+  // Mobile-rendered pages may expose tab anchors as "...#gid=12345" + label/title.
+  const linkRegex = /href="[^"]*#gid=(\d+)[^"]*"[\s\S]{0,220}?(?:aria-label|title)="([^"]+)"/g
+  for (;;) {
+    const m = linkRegex.exec(html)
+    if (!m) break
+    addTab(m[1], decodeHtml(m[2]))
   }
 
-  // Fallback for mobile-rendered pages where tab anchors are exposed as
-  // hyperlinks like "...#gid=12345" near the tab title text.
-  if (tabs.length === 0) {
-    const linkRegex = /href="[^"]*#gid=(\d+)[^"]*"[\s\S]{0,220}?(?:aria-label|title)="([^"]+)"/g
-    for (;;) {
-      const m = linkRegex.exec(html)
-      if (!m) break
-      const gid = m[1]
-      const name = m[2].trim()
-      if (!name) continue
-      const key = `${gid}:${name}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      tabs.push({ gid, name })
-    }
+  // Newer pages also render tab captions in DOM (sometimes without nearby sheetId).
+  const re3 = /docs-sheet-tab-caption">([\s\S]*?)<\/div>/g
+  for (;;) {
+    const m = re3.exec(html)
+    if (!m) break
+    addTab('', decodeHtml(m[1] ?? ''))
   }
 
-  // Generic backup: pair encountered gid fragments with nearby caption text.
-  if (tabs.length === 0) {
-    const gidRegex = /#gid=(\d+)/g
-    const nameRegex = /docs-sheet-tab-caption">([\s\S]*?)<\/div>/g
-    const gids: string[] = []
-    const names: string[] = []
-    for (;;) {
-      const gm = gidRegex.exec(html)
-      if (!gm) break
-      gids.push(gm[1])
-    }
-    for (;;) {
-      const nm = nameRegex.exec(html)
-      if (!nm) break
-      const name = (nm[1] || '')
-        .replace(/&amp;/g, '&')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .trim()
-      if (name) names.push(name)
-    }
-
-    const count = Math.min(gids.length, names.length)
-    for (let i = 0; i < count; i++) {
-      const gid = gids[i]
-      const name = names[i]
-      const key = `${gid}:${name}`
-      if (seen.has(key)) continue
-      seen.add(key)
-      tabs.push({ gid, name })
-    }
+  // Generic backup: pair encountered gid fragments with caption text by index.
+  const gidRegex = /#gid=(\d+)/g
+  const gids: string[] = []
+  const namesWithoutGid = tabs.filter((t) => !t.gid).map((t) => t.name)
+  for (;;) {
+    const gm = gidRegex.exec(html)
+    if (!gm) break
+    gids.push(gm[1])
+  }
+  const count = Math.min(gids.length, namesWithoutGid.length)
+  for (let i = 0; i < count; i++) {
+    addTab(gids[i], namesWithoutGid[i])
   }
 
-  return tabs
+  // Prefer higher quality entries (non-generic names with valid gid).
+  const normalized = (n: string) => n.trim().toLowerCase()
+  const withGidAndNamed = tabs.filter((t) => t.gid && normalized(t.name) !== 'sheet1')
+  if (withGidAndNamed.length) return withGidAndNamed
+
+  const withGid = tabs.filter((t) => t.gid)
+  if (withGid.length) return withGid
+
+  return tabs.filter((t) => !!t.name.trim())
 }
 
 export function extractGoogleSheetTabsFromWorksheetFeedJson(json: unknown): GoogleSheetTab[] {

@@ -86,6 +86,24 @@ function isIndexTabName(tabName: string): boolean {
   return n === 'index' || n === 'index sheet' || n === 'reference' || n === 'supervisor index'
 }
 
+function isGenericSheetName(tabName: string): boolean {
+  const n = tabName.trim().toLowerCase()
+  return n === 'sheet1' || /^sheet\d+$/.test(n)
+}
+
+function pickVehicleLikeValue(row: Record<string, string>): string {
+  const candidates = ['vehicle number', 'vehicle no', 'number', 'reg no', 'registration', 'cab number']
+  for (const [key, value] of Object.entries(row)) {
+    if (!value) continue
+    const normalizedKey = key.trim().toLowerCase()
+    if (candidates.some((c) => normalizedKey.includes(c))) {
+      const v = value.trim()
+      if (v) return v
+    }
+  }
+  return ''
+}
+
 export function useGoogleSheetCsvMulti(params: {
   queryKey: string[]
   spreadsheetId: string | null
@@ -134,7 +152,12 @@ export function useGoogleSheetCsvMulti(params: {
           const url = buildGoogleSheetCsvUrl({ spreadsheetId, sheetName: t.name, gid: t.gid })
           const text = await fetchText(url)
           const rows = parseCsv(text)
-          return rows.map((r) => ({ ...r, __sheet: t.name }))
+          const inferredName = rows.length ? pickVehicleLikeValue(rows[0]) : ''
+          const sheetLabel =
+            !isGenericSheetName(t.name) && t.name.trim()
+              ? t.name
+              : inferredName || (t.gid ? `Sheet-${t.gid}` : t.name || 'Sheet1')
+          return rows.map((r) => ({ ...r, __sheet: sheetLabel }))
         })
       )
 
