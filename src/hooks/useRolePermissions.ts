@@ -1,10 +1,9 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '../lib/supabase'
-import type { Role } from '../utils/types'
 import type { Permission } from '../utils/permissions'
 
 export interface RolePermissionsData {
-  role: Role
+  role: string
   permissions: Permission[]
 }
 
@@ -28,15 +27,16 @@ export function useRolePermissions() {
       }
       
       // Transform database response to our format
-      const permissionsMap: Record<Role, Permission[]> = {} as Record<Role, Permission[]>
+      const permissionsMap: Record<string, Permission[]> = {}
       data.forEach((row: { role: string; permissions: string[] }) => {
-        permissionsMap[row.role as Role] = row.permissions as Permission[]
+        permissionsMap[row.role] = row.permissions as Permission[]
       })
       
       return permissionsMap
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 
@@ -44,7 +44,7 @@ export function useUpdateRolePermissions() {
   const queryClient = useQueryClient()
   
   return useMutation({
-    mutationFn: async ({ role, permissions }: { role: Role; permissions: Permission[] }) => {
+    mutationFn: async ({ role, permissions }: { role: string; permissions: Permission[] }) => {
       const { data, error } = await supabase.rpc('update_role_permissions', {
         p_role: role,
         p_permissions: permissions,
@@ -67,7 +67,7 @@ export function useUpdateRolePermissions() {
   })
 }
 
-export function useGetRolePermissions(role: Role) {
+export function useGetRolePermissions(role: string) {
   return useQuery({
     queryKey: ['rolePermissions', role],
     queryFn: async () => {
@@ -86,8 +86,9 @@ export function useGetRolePermissions(role: Role) {
       // Data is JSONB array, parse it
       return (data || []) as Permission[]
     },
-    staleTime: 5 * 60 * 1000, // Cache for 5 minutes
-    refetchOnWindowFocus: false,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
   })
 }
 

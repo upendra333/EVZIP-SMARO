@@ -202,9 +202,18 @@ export function RideHailing() {
   }, [rows, savedColumnMap])
 
   const hubOptions = useMemo(() => {
-    return Array.from(new Set(normalizedTrips.map((trip) => trip.hub).filter(Boolean))).sort((a, b) =>
-      a.localeCompare(b)
-    )
+    const uniqueByCaseInsensitive = new Map<string, string>()
+
+    normalizedTrips.forEach((trip) => {
+      const hub = (trip.hub || '').trim()
+      if (!hub) return
+      const key = hub.toLowerCase()
+      if (!uniqueByCaseInsensitive.has(key)) {
+        uniqueByCaseInsensitive.set(key, hub.toUpperCase())
+      }
+    })
+
+    return Array.from(uniqueByCaseInsensitive.values()).sort((a, b) => a.localeCompare(b))
   }, [normalizedTrips])
 
   const filteredRows = useMemo(() => {

@@ -139,8 +139,9 @@ export function useOperator() {
       manager: 3,
       admin: 4,
     }
-
-    return roleHierarchy[operator.role] >= roleHierarchy[requiredRole]
+    const currentLevel = roleHierarchy[operator.role] ?? 0
+    const requiredLevel = roleHierarchy[requiredRole] ?? 0
+    return currentLevel >= requiredLevel
   }
 
   // Get all permissions for current user (uses database permissions if available)

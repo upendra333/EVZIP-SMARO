@@ -2,7 +2,7 @@
 
 export type TripStatus = 'created' | 'assigned' | 'enroute' | 'completed' | 'no_show' | 'cancelled'
 export type TripType = 'subscription' | 'airport' | 'rental'
-export type Role = 'supervisor' | 'manager' | 'read_only' | 'admin'
+export type Role = string
 
 export interface Operator {
   name: string

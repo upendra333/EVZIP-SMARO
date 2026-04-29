@@ -34,7 +34,7 @@ export const NAVIGATION_ITEMS = [
   { name: 'Imports', path: ROUTES.IMPORTS, icon: '📥', permission: PERMISSIONS.VIEW_IMPORTS },
   { name: 'Audit', path: ROUTES.AUDIT, icon: '📋', permission: PERMISSIONS.VIEW_AUDIT },
   { name: 'Role & Permissions', path: ROUTES.ROLE_PERMISSIONS, icon: '🔐', permission: PERMISSIONS.MANAGE_PERMISSIONS },
-  { name: 'User Management', path: ROUTES.USER_MANAGEMENT, icon: '👥', permission: PERMISSIONS.MANAGE_USERS },
+  { name: 'User Management', path: ROUTES.USER_MANAGEMENT, icon: '👥', permission: PERMISSIONS.VIEW_USERS },
 ] as const
 
 export const TRIP_STATUSES = {

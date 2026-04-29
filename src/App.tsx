@@ -109,7 +109,7 @@ function App() {
           <Route 
             path={ROUTES.USER_MANAGEMENT} 
             element={
-              <ProtectedRoute permission={PERMISSIONS.MANAGE_USERS}>
+              <ProtectedRoute permission={PERMISSIONS.VIEW_USERS}>
                 <UserManagement />
               </ProtectedRoute>
             } 

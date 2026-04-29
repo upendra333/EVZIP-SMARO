@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useMemo, useState } from 'react'
 import { useUsers } from '../hooks/useUsers'
 import { useCreateUser, useUpdateUser, useDeleteUser } from '../hooks/useManageUsers'
 import { useHubs } from '../hooks/useHubs'
@@ -9,11 +9,18 @@ import type { Role } from '../utils/types'
 import type { CreateUserData, UpdateUserData } from '../hooks/useManageUsers'
 import { ChangePasswordModal } from '../components/shared/ChangePasswordModal'
 import { useChangePassword } from '../hooks/useChangePassword'
+import { useRolePermissions } from '../hooks/useRolePermissions'
+
+function getRoleLabel(role: string): string {
+  if (role === 'read_only') return 'Management'
+  return role.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+}
 
 export function UserManagement() {
   const { data: users, isLoading } = useUsers()
   const { data: hubs } = useHubs()
   const { can } = useOperator()
+  const { data: rolePermissions } = useRolePermissions()
   const createMutation = useCreateUser()
   const updateMutation = useUpdateUser()
   const deleteMutation = useDeleteUser()
@@ -22,6 +29,8 @@ export function UserManagement() {
   const [editingUserId, setEditingUserId] = useState<string | null>(null)
   const [showAddModal, setShowAddModal] = useState(false)
   const [resetPasswordUserId, setResetPasswordUserId] = useState<string | null>(null)
+  const [sortBy, setSortBy] = useState<'username' | 'name' | 'email' | 'phone' | 'role' | 'hub' | 'status'>('username')
+  const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('asc')
 
   const editingUser = users?.find((u) => u.id === editingUserId)
 
@@ -34,10 +43,64 @@ export function UserManagement() {
     }
   }
 
-  const canCreate = can(PERMISSIONS.MANAGE_USERS)
-  const canEdit = can(PERMISSIONS.MANAGE_USERS)
-  const canDelete = can(PERMISSIONS.MANAGE_USERS)
-  const canResetPassword = can(PERMISSIONS.MANAGE_USERS)
+  // Respect granular user-management permissions; keep MANAGE_USERS as umbrella.
+  const canCreate = can(PERMISSIONS.CREATE_USER) || can(PERMISSIONS.MANAGE_USERS)
+  const canEdit = can(PERMISSIONS.EDIT_USER) || can(PERMISSIONS.MANAGE_USERS)
+  const canDelete = can(PERMISSIONS.DELETE_USER) || can(PERMISSIONS.MANAGE_USERS)
+  const canResetPassword = can(PERMISSIONS.EDIT_USER) || can(PERMISSIONS.MANAGE_USERS)
+
+  const sortedUsers = useMemo(() => {
+    if (!users?.length) return []
+
+    const valueForSort = (user: (typeof users)[number], key: typeof sortBy): string => {
+      switch (key) {
+        case 'username':
+          return user.username || ''
+        case 'name':
+          return user.name || ''
+        case 'email':
+          return user.email || ''
+        case 'phone':
+          return user.phone || ''
+        case 'role':
+          return user.role || ''
+        case 'hub':
+          return hubs?.find((h) => h.id === user.hub_id)?.name || ''
+        case 'status':
+          return user.status || ''
+        default:
+          return ''
+      }
+    }
+
+    return [...users].sort((a, b) => {
+      const aVal = valueForSort(a, sortBy)
+      const bVal = valueForSort(b, sortBy)
+      const cmp = aVal.localeCompare(bVal, undefined, { sensitivity: 'base', numeric: true })
+      return sortDirection === 'asc' ? cmp : -cmp
+    })
+  }, [users, hubs, sortBy, sortDirection])
+
+  const availableRoles = useMemo(() => {
+    const base = [ROLES.ADMIN, ROLES.READ_ONLY, ROLES.MANAGER, ROLES.SUPERVISOR]
+    const dynamic = rolePermissions ? Object.keys(rolePermissions) : []
+    const all = Array.from(new Set([...base, ...dynamic]))
+    return all.sort((a, b) => getRoleLabel(a).localeCompare(getRoleLabel(b)))
+  }, [rolePermissions])
+
+  const toggleSort = (key: typeof sortBy) => {
+    if (sortBy === key) {
+      setSortDirection((prev) => (prev === 'asc' ? 'desc' : 'asc'))
+      return
+    }
+    setSortBy(key)
+    setSortDirection('asc')
+  }
+
+  const sortIndicator = (key: typeof sortBy) => {
+    if (sortBy !== key) return ''
+    return sortDirection === 'asc' ? ' ▲' : ' ▼'
+  }
 
   const handleResetPassword = async (_oldPassword: string, newPassword: string) => {
     if (!resetPasswordUserId) {
@@ -59,6 +122,7 @@ export function UserManagement() {
           phone: editingUser.phone ?? null,
         }}
         hubs={hubs || []}
+        availableRoles={availableRoles}
         onSave={async (data) => {
           await updateMutation.mutateAsync({ id: editingUserId, ...data })
           setEditingUserId(null)
@@ -72,6 +136,7 @@ export function UserManagement() {
     return (
       <AddUserForm
         hubs={hubs || []}
+        availableRoles={availableRoles}
         onSave={async (data) => {
           await createMutation.mutateAsync(data)
           setShowAddModal(false)
@@ -105,18 +170,46 @@ export function UserManagement() {
           <table className="w-full">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Username</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Name</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Email</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Phone</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Role</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Hub</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <button onClick={() => toggleSort('username')} className="hover:text-gray-700">
+                    Username{sortIndicator('username')}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <button onClick={() => toggleSort('name')} className="hover:text-gray-700">
+                    Name{sortIndicator('name')}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <button onClick={() => toggleSort('email')} className="hover:text-gray-700">
+                    Email{sortIndicator('email')}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <button onClick={() => toggleSort('phone')} className="hover:text-gray-700">
+                    Phone{sortIndicator('phone')}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <button onClick={() => toggleSort('role')} className="hover:text-gray-700">
+                    Role{sortIndicator('role')}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <button onClick={() => toggleSort('hub')} className="hover:text-gray-700">
+                    Hub{sortIndicator('hub')}
+                  </button>
+                </th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">
+                  <button onClick={() => toggleSort('status')} className="hover:text-gray-700">
+                    Status{sortIndicator('status')}
+                  </button>
+                </th>
                 <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-200">
-              {users?.map((user) => {
+              {sortedUsers.map((user) => {
                 const hub = hubs?.find((h) => h.id === user.hub_id)
                 return (
                   <tr key={user.id}>
@@ -131,7 +224,7 @@ export function UserManagement() {
                         user.role === 'supervisor' ? 'bg-green-100 text-green-800' :
                         'bg-gray-100 text-gray-800'
                       }`}>
-                        {user.role}
+                        {getRoleLabel(user.role)}
                       </span>
                     </td>
                     <td className="px-4 py-3 text-sm text-gray-600">{hub?.name || '-'}</td>
@@ -198,11 +291,13 @@ export function UserManagement() {
 function EditUserForm({
   user,
   hubs,
+  availableRoles,
   onSave,
   onCancel,
 }: {
   user: { id: string; name: string; username: string; email: string | null | undefined; phone: string | null | undefined; role: Role; hub_id: string | null; status: string }
   hubs: Array<{ id: string; name: string }>
+  availableRoles: string[]
   onSave: (data: UpdateUserData) => Promise<void>
   onCancel: () => void
 }) {
@@ -295,10 +390,11 @@ function EditUserForm({
             onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value={ROLES.READ_ONLY}>Management</option>
-            <option value={ROLES.SUPERVISOR}>Supervisor</option>
-            <option value={ROLES.MANAGER}>Manager</option>
-            <option value={ROLES.ADMIN}>Admin</option>
+            {availableRoles.map((role) => (
+              <option key={role} value={role}>
+                {getRoleLabel(role)}
+              </option>
+            ))}
           </select>
         </div>
         <div>
@@ -349,10 +445,12 @@ function EditUserForm({
 
 function AddUserForm({
   hubs,
+  availableRoles,
   onSave,
   onCancel,
 }: {
   hubs: Array<{ id: string; name: string }>
+  availableRoles: string[]
   onSave: (data: CreateUserData) => Promise<void>
   onCancel: () => void
 }) {
@@ -444,10 +542,11 @@ function AddUserForm({
             onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value={ROLES.READ_ONLY}>Management</option>
-            <option value={ROLES.SUPERVISOR}>Supervisor</option>
-            <option value={ROLES.MANAGER}>Manager</option>
-            <option value={ROLES.ADMIN}>Admin</option>
+            {availableRoles.map((role) => (
+              <option key={role} value={role}>
+                {getRoleLabel(role)}
+              </option>
+            ))}
           </select>
         </div>
         <div>
