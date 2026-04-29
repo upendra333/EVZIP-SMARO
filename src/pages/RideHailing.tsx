@@ -4,6 +4,7 @@ import { parseGoogleSpreadsheetId } from '../utils/googleSheets'
 import { useGoogleSpreadsheetTabs } from '../hooks/useGoogleSpreadsheetTabs'
 import { useGoogleSheetCsvMulti } from '../hooks/useGoogleSheetCsvMulti'
 import { useOperator } from '../hooks/useOperator'
+import { useRideHailingColumnMap, useUpdateRideHailingColumnMap } from '../hooks/useRideHailingColumnMap'
 import type { GoogleSheetTab } from '../utils/googleSheets'
 
 type RideHailingFilters = {
@@ -117,13 +118,9 @@ export function RideHailing() {
   })
   const [currentPage, setCurrentPage] = useState(1)
   const rowsPerPage = 50
-  const [columnMap, setColumnMap] = useState<RideHailingColumnMap>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('rideHailing.columnMap') || '{}') as RideHailingColumnMap
-    } catch {
-      return {}
-    }
-  })
+  const { data: savedColumnMap = {} } = useRideHailingColumnMap()
+  const updateColumnMapMutation = useUpdateRideHailingColumnMap()
+  const [columnMapDraft, setColumnMapDraft] = useState<RideHailingColumnMap>({})
 
   const [filters, setFilters] = useState<RideHailingFilters>(() => {
     return {
@@ -158,17 +155,25 @@ export function RideHailing() {
     return rows
       .map((r) => {
         const tsRaw =
-          getRowValueByColumnLetter(r, columnMap.timestamp) ||
+          getRowValueByColumnLetter(r, savedColumnMap.timestamp) ||
           getRowValueByCandidates(
             r,
             ['timestamp', 'time stamp', 'submitted at', 'submission time', 'date', 'trip date', 'start date', 'start time'],
             'contains'
           )
         const tsDate = parseDateLoose(tsRaw)
-        const upi = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.upi) || getRowValueByCandidates(r, ['upi'], 'contains'))
-        const cash = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.cash) || getRowValueByCandidates(r, ['cash'], 'contains'))
-        const uber = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.uber) || getRowValueByCandidates(r, ['uber'], 'contains'))
-        const tip = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.tip) || getRowValueByCandidates(r, ['tip'], 'contains'))
+        const upi = toNumberOrZero(
+          getRowValueByColumnLetter(r, savedColumnMap.upi) || getRowValueByCandidates(r, ['upi'], 'contains')
+        )
+        const cash = toNumberOrZero(
+          getRowValueByColumnLetter(r, savedColumnMap.cash) || getRowValueByCandidates(r, ['cash'], 'contains')
+        )
+        const uber = toNumberOrZero(
+          getRowValueByColumnLetter(r, savedColumnMap.uber) || getRowValueByCandidates(r, ['uber'], 'contains')
+        )
+        const tip = toNumberOrZero(
+          getRowValueByColumnLetter(r, savedColumnMap.tip) || getRowValueByCandidates(r, ['tip'], 'contains')
+        )
         const total = upi + cash + uber + tip
 
         return {
@@ -177,13 +182,13 @@ export function RideHailing() {
           timestampMs: tsDate ? tsDate.getTime() : Number.NEGATIVE_INFINITY,
           timestampDate: tsDate,
           hub:
-            getRowValueByColumnLetter(r, columnMap.hub) ||
+            getRowValueByColumnLetter(r, savedColumnMap.hub) ||
             getRowValueByCandidates(r, ['hub', 'hub name', 'location', 'branch'], 'contains'),
           pilotId:
-            getRowValueByColumnLetter(r, columnMap.pilotId) ||
+            getRowValueByColumnLetter(r, savedColumnMap.pilotId) ||
             getRowValueByCandidates(r, ['pilot id', 'pilotid', 'driver id', 'captain id'], 'contains'),
           service:
-            getRowValueByColumnLetter(r, columnMap.service) ||
+            getRowValueByColumnLetter(r, savedColumnMap.service) ||
             getRowValueByCandidates(r, ['service', 'trip type', 'ride type'], 'contains'),
           upi,
           cash,
@@ -194,7 +199,7 @@ export function RideHailing() {
       })
       .filter((trip) => trip.timestampDate !== null)
       .sort((a, b) => b.timestampMs - a.timestampMs)
-  }, [rows, columnMap])
+  }, [rows, savedColumnMap])
 
   const hubOptions = useMemo(() => {
     return Array.from(new Set(normalizedTrips.map((trip) => trip.hub).filter(Boolean))).sort((a, b) =>
@@ -244,6 +249,10 @@ export function RideHailing() {
     }
   }, [currentPage, totalPages])
 
+  useEffect(() => {
+    setColumnMapDraft(savedColumnMap)
+  }, [savedColumnMap])
+
   const periodStats = useMemo(() => {
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
@@ -275,7 +284,6 @@ export function RideHailing() {
   const persistSettings = () => {
     localStorage.setItem('rideHailing.sheetUrl', sheetUrl)
     localStorage.setItem('rideHailing.autoRefresh', autoRefresh ? 'on' : 'off')
-    localStorage.setItem('rideHailing.columnMap', JSON.stringify(columnMap))
   }
 
   return (
@@ -350,8 +358,27 @@ export function RideHailing() {
             </div>
           </div>
           <div className="mt-6 pt-4 border-t border-gray-200">
-            <p className="text-sm font-medium text-gray-700 mb-3">Manual column mapping (applies to all tabs)</p>
-            <p className="text-xs text-gray-500 mb-3">Enter column letters like A, B, O. Leave blank to auto-detect by header.</p>
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <p className="text-sm font-medium text-gray-700">Manual column mapping (applies to all tabs)</p>
+              <button
+                onClick={() => updateColumnMapMutation.mutate(columnMapDraft)}
+                disabled={updateColumnMapMutation.isPending}
+                className="px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-60"
+              >
+                {updateColumnMapMutation.isPending ? 'Saving...' : 'Save Mapping'}
+              </button>
+            </div>
+            <p className="text-xs text-gray-500 mb-3">
+              Enter column letters like A, B, O. Leave blank to auto-detect by header.
+            </p>
+            {updateColumnMapMutation.isError && (
+              <p className="text-xs text-red-600 mb-3">{(updateColumnMapMutation.error as Error).message}</p>
+            )}
+            {updateColumnMapMutation.isSuccess && (
+              <p className="text-xs text-green-700 mb-3">
+                Mapping saved. This configuration is now used for all users across roles.
+              </p>
+            )}
             <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
               {(
                 [
@@ -368,14 +395,13 @@ export function RideHailing() {
                 <div key={key}>
                   <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
                   <input
-                    value={columnMap[key] || ''}
+                    value={columnMapDraft[key] || ''}
                     onChange={(e) =>
-                      setColumnMap((prev) => ({
+                      setColumnMapDraft((prev) => ({
                         ...prev,
                         [key]: normalizeColumnLetter(e.target.value),
                       }))
                     }
-                    onBlur={persistSettings}
                     placeholder="Auto"
                     maxLength={3}
                     className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"

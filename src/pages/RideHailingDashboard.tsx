@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { parseGoogleSpreadsheetId } from '../utils/googleSheets'
 import { useGoogleSpreadsheetTabs } from '../hooks/useGoogleSpreadsheetTabs'
 import { useGoogleSheetCsvMulti } from '../hooks/useGoogleSheetCsvMulti'
+import { useRideHailingColumnMap } from '../hooks/useRideHailingColumnMap'
 import type { GoogleSheetTab } from '../utils/googleSheets'
 
 type DashboardFilters = {
@@ -10,17 +11,6 @@ type DashboardFilters = {
   pilotId?: string
   dateFrom?: string
   dateTo?: string
-}
-
-type RideHailingColumnMap = {
-  timestamp?: string
-  hub?: string
-  pilotId?: string
-  service?: string
-  upi?: string
-  cash?: string
-  uber?: string
-  tip?: string
 }
 
 type NormalizedTrip = {
@@ -220,13 +210,7 @@ export function RideHailingDashboard() {
     dateFrom: '',
     dateTo: '',
   })
-  const [columnMap] = useState<RideHailingColumnMap>(() => {
-    try {
-      return JSON.parse(localStorage.getItem('rideHailing.columnMap') || '{}') as RideHailingColumnMap
-    } catch {
-      return {}
-    }
-  })
+  const { data: columnMap = {} } = useRideHailingColumnMap()
   const [isFiltersCollapsed, setIsFiltersCollapsed] = useState(false)
 
   const { data: sheetTabs = [] } = useGoogleSpreadsheetTabs({
