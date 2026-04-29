@@ -184,11 +184,10 @@ export function checkPermissionWithDB(
   permission: Permission,
   dbPermissions: Record<Role, Permission[]> | null | undefined
 ): boolean {
-  // If database permissions are available, use them
+  // If database permissions exist for this role, treat them as source of truth.
+  // This ensures Role & Permissions toggles are applied exactly as saved.
   if (dbPermissions && dbPermissions[role]) {
-    // Prefer DB as the main source, but fallback to hardcoded so newly added
-    // permissions still work before migrations/DB updates are applied.
-    return dbPermissions[role].includes(permission) || hasPermission(role, permission)
+    return dbPermissions[role].includes(permission)
   }
   
   // Fallback to hardcoded permissions

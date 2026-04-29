@@ -3,6 +3,13 @@ import { useNavigate } from 'react-router-dom'
 import { useLogin } from '../hooks/useAuth'
 import { useOperator } from '../hooks/useOperator'
 import { ROUTES } from '../utils/constants'
+import type { Role } from '../utils/types'
+
+function getDefaultPostLoginRoute(role?: Role): string {
+  // Management (read_only) users should land on Dashboard by default.
+  if (role === 'read_only') return ROUTES.RIDE_HAILING_DASHBOARD
+  return ROUTES.RIDE_HAILING
+}
 
 export function Login() {
   const [username, setUsername] = useState('')
@@ -19,7 +26,7 @@ export function Login() {
       try {
         const user = JSON.parse(currentUser)
         setOperator(user.name, user.role)
-        navigate(ROUTES.RIDE_HAILING)
+        navigate(getDefaultPostLoginRoute(user.role))
       } catch {
         // Invalid user data, clear it
         localStorage.removeItem('currentUser')
@@ -40,7 +47,9 @@ export function Login() {
       await loginMutation.mutateAsync({ username: username.trim(), password })
       // User is already stored in localStorage by useLogin hook
       // Use hard redirect to ensure clean state refresh
-      window.location.href = ROUTES.RIDE_HAILING
+      const currentUser = localStorage.getItem('currentUser')
+      const role = currentUser ? (JSON.parse(currentUser).role as Role | undefined) : undefined
+      window.location.href = getDefaultPostLoginRoute(role)
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.')
     }
