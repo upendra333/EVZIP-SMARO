@@ -131,6 +131,58 @@ export function extractGoogleSheetTabsFromHtml(html: string): GoogleSheetTab[] {
     }
   }
 
+  // Fallback for mobile-rendered pages where tab anchors are exposed as
+  // hyperlinks like "...#gid=12345" near the tab title text.
+  if (tabs.length === 0) {
+    const linkRegex = /href="[^"]*#gid=(\d+)[^"]*"[\s\S]{0,220}?(?:aria-label|title)="([^"]+)"/g
+    for (;;) {
+      const m = linkRegex.exec(html)
+      if (!m) break
+      const gid = m[1]
+      const name = m[2].trim()
+      if (!name) continue
+      const key = `${gid}:${name}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      tabs.push({ gid, name })
+    }
+  }
+
+  // Generic backup: pair encountered gid fragments with nearby caption text.
+  if (tabs.length === 0) {
+    const gidRegex = /#gid=(\d+)/g
+    const nameRegex = /docs-sheet-tab-caption">([\s\S]*?)<\/div>/g
+    const gids: string[] = []
+    const names: string[] = []
+    for (;;) {
+      const gm = gidRegex.exec(html)
+      if (!gm) break
+      gids.push(gm[1])
+    }
+    for (;;) {
+      const nm = nameRegex.exec(html)
+      if (!nm) break
+      const name = (nm[1] || '')
+        .replace(/&amp;/g, '&')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .trim()
+      if (name) names.push(name)
+    }
+
+    const count = Math.min(gids.length, names.length)
+    for (let i = 0; i < count; i++) {
+      const gid = gids[i]
+      const name = names[i]
+      const key = `${gid}:${name}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      tabs.push({ gid, name })
+    }
+  }
+
   return tabs
 }
 
