@@ -118,17 +118,6 @@ export function Login() {
           <p className="text-sm text-gray-600">
             In case of any login issues please contact your Manager
           </p>
-          <p className="text-xs">
-            Designed & Developed by{' '}
-            <a
-              href="https://www.ardnepu.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-primary hover:underline font-medium"
-            >
-              ardnepu
-            </a>
-          </p>
         </div>
       </div>
     </div>
