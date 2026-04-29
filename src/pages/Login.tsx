@@ -19,7 +19,7 @@ export function Login() {
       try {
         const user = JSON.parse(currentUser)
         setOperator(user.name, user.role)
-        navigate(ROUTES.DASHBOARD)
+        navigate(ROUTES.RIDE_HAILING)
       } catch {
         // Invalid user data, clear it
         localStorage.removeItem('currentUser')
@@ -40,7 +40,7 @@ export function Login() {
       await loginMutation.mutateAsync({ username: username.trim(), password })
       // User is already stored in localStorage by useLogin hook
       // Use hard redirect to ensure clean state refresh
-      window.location.href = ROUTES.DASHBOARD
+      window.location.href = ROUTES.RIDE_HAILING
     } catch (err: any) {
       setError(err.message || 'Login failed. Please check your credentials.')
     }
