@@ -103,6 +103,18 @@ export function useGoogleSheetCsvMulti(params: {
       if (!spreadsheetId) return []
 
       let effectiveTabs = tabs ?? []
+      const needsFeedFallback =
+        effectiveTabs.length === 0 ||
+        effectiveTabs.every((t) => !String(t.gid || '').trim()) ||
+        effectiveTabs.every((t) => (t.name || '').trim().toLowerCase() === 'sheet1')
+
+      if (needsFeedFallback) {
+        const feedTabs = await fetchWorksheetFeedTabs(spreadsheetId)
+        if (feedTabs.length > 0) {
+          effectiveTabs = feedTabs
+        }
+      }
+
       if (!effectiveTabs.length) {
         // Fallback: discover tabs via worksheet feed if tab discovery hook failed.
         effectiveTabs = await fetchWorksheetFeedTabs(spreadsheetId)

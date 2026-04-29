@@ -39,10 +39,12 @@ export function useGoogleSpreadsheetTabs(params: {
     enabled: enabled && !!spreadsheetId,
     queryFn: async () => {
       if (!spreadsheetId) return []
-      const html = await fetchSheetHtml(spreadsheetId)
-      let tabs = extractGoogleSheetTabsFromHtml(html)
+
+      // Prefer worksheet feed first; it's stable across desktop/mobile HTML variants.
+      let tabs = await fetchWorksheetFeed(spreadsheetId)
       if (tabs.length === 0) {
-        tabs = await fetchWorksheetFeed(spreadsheetId)
+        const html = await fetchSheetHtml(spreadsheetId)
+        tabs = extractGoogleSheetTabsFromHtml(html)
       }
       // Prefer stable ordering by numeric gid; keep name fallback stable for non-numeric gids.
       return tabs.sort((a, b) => {
