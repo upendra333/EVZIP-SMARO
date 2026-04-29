@@ -105,15 +105,41 @@ const SERVICE_LOGO_SIZE_CLASS: Partial<Record<string, string>> = {
 
 function parseDateLoose(value: string): Date | null {
   if (!value) return null
-  const d = new Date(value)
+  const raw = value.trim()
+  if (!raw) return null
+
+  // iOS Safari often rejects "YYYY-MM-DD HH:mm:ss"; normalize it first.
+  const normalized = raw.replace(' ', 'T')
+  const d = new Date(normalized)
   if (!Number.isNaN(d.getTime())) return d
-  const m = value.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})/)
-  if (!m) return null
-  const day = Number(m[1])
-  const month = Number(m[2]) - 1
-  const year = Number(m[3].length === 2 ? `20${m[3]}` : m[3])
-  const parsed = new Date(year, month, day)
-  return Number.isNaN(parsed.getTime()) ? null : parsed
+
+  // dd/mm/yyyy or dd-mm-yyyy with optional time (common in IN forms)
+  const dmy = raw.match(/^(\d{1,2})[\/-](\d{1,2})[\/-](\d{2,4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?/)
+  if (dmy) {
+    const day = Number(dmy[1])
+    const month = Number(dmy[2]) - 1
+    const year = Number(dmy[3].length === 2 ? `20${dmy[3]}` : dmy[3])
+    const hours = Number(dmy[4] || 0)
+    const minutes = Number(dmy[5] || 0)
+    const seconds = Number(dmy[6] || 0)
+    const parsed = new Date(year, month, day, hours, minutes, seconds)
+    if (!Number.isNaN(parsed.getTime())) return parsed
+  }
+
+  // yyyy-mm-dd with optional time
+  const ymd = raw.match(/^(\d{4})-(\d{1,2})-(\d{1,2})(?:[T\s](\d{1,2}):(\d{2})(?::(\d{2}))?)?/)
+  if (ymd) {
+    const year = Number(ymd[1])
+    const month = Number(ymd[2]) - 1
+    const day = Number(ymd[3])
+    const hours = Number(ymd[4] || 0)
+    const minutes = Number(ymd[5] || 0)
+    const seconds = Number(ymd[6] || 0)
+    const parsed = new Date(year, month, day, hours, minutes, seconds)
+    if (!Number.isNaN(parsed.getTime())) return parsed
+  }
+
+  return null
 }
 
 function getRowValueByCandidates(
@@ -261,7 +287,6 @@ export function RideHailingDashboard() {
           total: upi + cash + uber + tip,
         }
       })
-      .filter((trip) => trip.timestampDate !== null)
   }, [rows, columnMap])
 
   const hubOptions = useMemo(() => {
@@ -281,9 +306,11 @@ export function RideHailingDashboard() {
       if (hubQ && !trip.hub.toLowerCase().includes(hubQ)) return false
       if (numberQ && !trip.vehicleNumber.toLowerCase().includes(numberQ)) return false
       if (pilotQ && !trip.pilotId.toLowerCase().includes(pilotQ)) return false
-      if (!trip.timestampDate) return false
-      if (from && trip.timestampDate < from) return false
-      if (to && trip.timestampDate > to) return false
+      if (from || to) {
+        if (!trip.timestampDate) return false
+        if (from && trip.timestampDate < from) return false
+        if (to && trip.timestampDate > to) return false
+      }
       return true
     })
   }, [normalizedTrips, filters])

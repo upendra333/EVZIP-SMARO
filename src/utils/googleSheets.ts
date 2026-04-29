@@ -60,6 +60,36 @@ export function extractGoogleSheetTabsFromHtml(html: string): GoogleSheetTab[] {
     }
   }
 
+  // Additional fallback: mobile/alternate page payloads frequently use `title`
+  // instead of `name` for sheet properties.
+  if (tabs.length === 0) {
+    const re4 = /"sheetId":(\d+)[\s\S]{0,260}?"title":"([^"]+)"/g
+    for (;;) {
+      const m = re4.exec(html)
+      if (!m) break
+      const gid = m[1]
+      const name = m[2]
+      const key = `${gid}:${name}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      tabs.push({ gid, name })
+    }
+  }
+
+  if (tabs.length === 0) {
+    const re5 = /"title":"([^"]+)"[\s\S]{0,260}?"sheetId":(\d+)/g
+    for (;;) {
+      const m = re5.exec(html)
+      if (!m) break
+      const name = m[1]
+      const gid = m[2]
+      const key = `${gid}:${name}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      tabs.push({ gid, name })
+    }
+  }
+
   // Newer sheet pages often render tab captions in DOM without exposing sheetId nearby.
   // In this mode we can still fetch CSV by `sheet` name, so synthesize stable gids.
   if (tabs.length === 0) {
