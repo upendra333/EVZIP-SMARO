@@ -14,6 +14,17 @@ type RideHailingFilters = {
   dateTo?: string
 }
 
+type RideHailingColumnMap = {
+  timestamp?: string
+  hub?: string
+  pilotId?: string
+  service?: string
+  upi?: string
+  cash?: string
+  uber?: string
+  tip?: string
+}
+
 function parseDateLoose(value: string): Date | null {
   if (!value) return null
   const d = new Date(value)
@@ -45,6 +56,16 @@ function getRowValueByCandidates(
     if (hit && hit.value.trim()) return hit.value.trim()
   }
   return ''
+}
+
+function normalizeColumnLetter(value: string): string {
+  return (value || '').trim().toUpperCase().replace(/[^A-Z]/g, '')
+}
+
+function getRowValueByColumnLetter(row: Record<string, string>, columnLetter?: string): string {
+  const letter = normalizeColumnLetter(columnLetter || '')
+  if (!letter) return ''
+  return (row[`__col_${letter}`] || '').trim()
 }
 
 function isIndexTabName(tabName: string): boolean {
@@ -96,6 +117,13 @@ export function RideHailing() {
   })
   const [currentPage, setCurrentPage] = useState(1)
   const rowsPerPage = 50
+  const [columnMap, setColumnMap] = useState<RideHailingColumnMap>(() => {
+    try {
+      return JSON.parse(localStorage.getItem('rideHailing.columnMap') || '{}') as RideHailingColumnMap
+    } catch {
+      return {}
+    }
+  })
 
   const [filters, setFilters] = useState<RideHailingFilters>(() => {
     return {
@@ -129,16 +157,18 @@ export function RideHailing() {
   const normalizedTrips = useMemo<NormalizedTrip[]>(() => {
     return rows
       .map((r) => {
-        const tsRaw = getRowValueByCandidates(
-          r,
-          ['timestamp', 'time stamp', 'submitted at', 'submission time', 'date', 'trip date', 'start date', 'start time'],
-          'contains'
-        )
+        const tsRaw =
+          getRowValueByColumnLetter(r, columnMap.timestamp) ||
+          getRowValueByCandidates(
+            r,
+            ['timestamp', 'time stamp', 'submitted at', 'submission time', 'date', 'trip date', 'start date', 'start time'],
+            'contains'
+          )
         const tsDate = parseDateLoose(tsRaw)
-        const upi = toNumberOrZero(getRowValueByCandidates(r, ['upi'], 'contains'))
-        const cash = toNumberOrZero(getRowValueByCandidates(r, ['cash'], 'contains'))
-        const uber = toNumberOrZero(getRowValueByCandidates(r, ['uber'], 'contains'))
-        const tip = toNumberOrZero(getRowValueByCandidates(r, ['tip'], 'contains'))
+        const upi = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.upi) || getRowValueByCandidates(r, ['upi'], 'contains'))
+        const cash = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.cash) || getRowValueByCandidates(r, ['cash'], 'contains'))
+        const uber = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.uber) || getRowValueByCandidates(r, ['uber'], 'contains'))
+        const tip = toNumberOrZero(getRowValueByColumnLetter(r, columnMap.tip) || getRowValueByCandidates(r, ['tip'], 'contains'))
         const total = upi + cash + uber + tip
 
         return {
@@ -146,9 +176,15 @@ export function RideHailing() {
           timestamp: tsRaw,
           timestampMs: tsDate ? tsDate.getTime() : Number.NEGATIVE_INFINITY,
           timestampDate: tsDate,
-          hub: getRowValueByCandidates(r, ['hub', 'hub name', 'location', 'branch'], 'contains'),
-          pilotId: getRowValueByCandidates(r, ['pilot id', 'pilotid', 'driver id', 'captain id'], 'contains'),
-          service: getRowValueByCandidates(r, ['service', 'trip type', 'ride type'], 'contains'),
+          hub:
+            getRowValueByColumnLetter(r, columnMap.hub) ||
+            getRowValueByCandidates(r, ['hub', 'hub name', 'location', 'branch'], 'contains'),
+          pilotId:
+            getRowValueByColumnLetter(r, columnMap.pilotId) ||
+            getRowValueByCandidates(r, ['pilot id', 'pilotid', 'driver id', 'captain id'], 'contains'),
+          service:
+            getRowValueByColumnLetter(r, columnMap.service) ||
+            getRowValueByCandidates(r, ['service', 'trip type', 'ride type'], 'contains'),
           upi,
           cash,
           uber,
@@ -158,7 +194,7 @@ export function RideHailing() {
       })
       .filter((trip) => trip.timestampDate !== null)
       .sort((a, b) => b.timestampMs - a.timestampMs)
-  }, [rows])
+  }, [rows, columnMap])
 
   const hubOptions = useMemo(() => {
     return Array.from(new Set(normalizedTrips.map((trip) => trip.hub).filter(Boolean))).sort((a, b) =>
@@ -188,6 +224,8 @@ export function RideHailing() {
     })
   }, [normalizedTrips, filters])
 
+  const canExportFilteredRows = Boolean(filters.dateFrom && filters.dateTo) && filteredRows.length > 0
+
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage))
 
   const paginatedRows = useMemo(() => {
@@ -210,8 +248,6 @@ export function RideHailing() {
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1, 0, 0, 0, 0)
-    const monthEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
 
     const calc = (from: Date, to: Date) => {
       const trips = normalizedTrips.filter((trip) => {
@@ -233,104 +269,155 @@ export function RideHailing() {
 
     return {
       today: calc(todayStart, todayEnd),
-      month: calc(monthStart, monthEnd),
     }
   }, [normalizedTrips])
 
   const persistSettings = () => {
     localStorage.setItem('rideHailing.sheetUrl', sheetUrl)
     localStorage.setItem('rideHailing.autoRefresh', autoRefresh ? 'on' : 'off')
+    localStorage.setItem('rideHailing.columnMap', JSON.stringify(columnMap))
   }
 
   return (
     <div>
-      <div className="flex items-start justify-between gap-4 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4 mb-6">
         <div>
           <h1 className="text-2xl font-bold text-text">Ride Hailing</h1>
           <p className="text-sm text-gray-600">
             Live view from your Google Sheet for reconciliation, monitoring, and reporting.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <button
             onClick={() => refetch()}
-            className="px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            className="w-full sm:w-auto px-4 py-2 bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
             disabled={isLoading || isFetching || !spreadsheetId}
             title="Refresh"
           >
             Refresh
           </button>
-          <button
-            onClick={() => exportToCSV(filteredRows, 'ride_hailing_trips')}
-            className="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
-            disabled={filteredRows.length === 0}
-            title="Export filtered rows to CSV"
-          >
-            Export CSV
-          </button>
         </div>
       </div>
 
-      <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Google Sheet link</label>
-            <input
-              value={sheetUrl}
-              onChange={(e) => setSheetUrl(e.target.value)}
-              onBlur={persistSettings}
-              placeholder="Paste Google Sheet URL..."
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
-              disabled={isSourceSectionDisabled}
-              readOnly={isSourceSectionDisabled}
-            />
-            {!spreadsheetId && (
-              <p className="mt-2 text-xs text-red-600">Could not detect spreadsheet ID from the URL.</p>
-            )}
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">Consolidation mode</label>
-            <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800">
-              All tabs (auto consolidated)
+      {!isSourceSectionDisabled && (
+        <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Google Sheet link</label>
+              <input
+                value={sheetUrl}
+                onChange={(e) => setSheetUrl(e.target.value)}
+                onBlur={persistSettings}
+                placeholder="Paste Google Sheet URL..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+              />
+              {!spreadsheetId && (
+                <p className="mt-2 text-xs text-red-600">Could not detect spreadsheet ID from the URL.</p>
+              )}
             </div>
-            <p className="mt-2 text-xs text-gray-500">
-              {sheetTabs.length > 0
-                ? `Detected ${sheetTabs.length} tabs. Data is merged from ${dataTabs.length} tabs (excluding Index tab).`
-                : 'Tab detection unavailable. Showing default sheet tab data as fallback.'}
-            </p>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1">
-              <label className="block text-sm font-medium text-gray-700 mb-2">Auto refresh</label>
-              <button
-                onClick={() => {
-                  setAutoRefresh((v) => {
-                    const next = !v
-                    localStorage.setItem('rideHailing.autoRefresh', next ? 'on' : 'off')
-                    return next
-                  })
-                }}
-                className={`w-full px-3 py-2 border rounded-lg ${
-                  autoRefresh ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-700'
-                }`}
-                disabled={isSourceSectionDisabled}
-              >
-                {autoRefresh ? 'ON (30s)' : 'OFF'}
-              </button>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Consolidation mode</label>
+              <div className="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50 text-gray-800">
+                All tabs (auto consolidated)
+              </div>
               <p className="mt-2 text-xs text-gray-500">
-                Live stats will refetch every 30 seconds when enabled.
+                {sheetTabs.length > 0
+                  ? `Detected ${sheetTabs.length} tabs. Data is merged from ${dataTabs.length} tabs (excluding Index tab).`
+                  : 'Tab detection unavailable. Showing default sheet tab data as fallback.'}
               </p>
             </div>
+            <div className="flex items-center justify-between gap-4">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Auto refresh</label>
+                <button
+                  onClick={() => {
+                    setAutoRefresh((v) => {
+                      const next = !v
+                      localStorage.setItem('rideHailing.autoRefresh', next ? 'on' : 'off')
+                      return next
+                    })
+                  }}
+                  className={`w-full px-3 py-2 border rounded-lg ${
+                    autoRefresh ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-700'
+                  }`}
+                >
+                  {autoRefresh ? 'ON (30s)' : 'OFF'}
+                </button>
+                <p className="mt-2 text-xs text-gray-500">
+                  Live stats will refetch every 30 seconds when enabled.
+                </p>
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 pt-4 border-t border-gray-200">
+            <p className="text-sm font-medium text-gray-700 mb-3">Manual column mapping (applies to all tabs)</p>
+            <p className="text-xs text-gray-500 mb-3">Enter column letters like A, B, O. Leave blank to auto-detect by header.</p>
+            <div className="grid grid-cols-2 md:grid-cols-4 xl:grid-cols-8 gap-3">
+              {(
+                [
+                  ['timestamp', 'Timestamp'],
+                  ['hub', 'Hub'],
+                  ['pilotId', 'Pilot ID'],
+                  ['service', 'Service'],
+                  ['upi', 'UPI'],
+                  ['cash', 'Cash'],
+                  ['uber', 'Uber'],
+                  ['tip', 'Tip'],
+                ] as Array<[keyof RideHailingColumnMap, string]>
+              ).map(([key, label]) => (
+                <div key={key}>
+                  <label className="block text-xs font-medium text-gray-700 mb-1">{label}</label>
+                  <input
+                    value={columnMap[key] || ''}
+                    onChange={(e) =>
+                      setColumnMap((prev) => ({
+                        ...prev,
+                        [key]: normalizeColumnLetter(e.target.value),
+                      }))
+                    }
+                    onBlur={persistSettings}
+                    placeholder="Auto"
+                    maxLength={3}
+                    className="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                </div>
+              ))}
+            </div>
           </div>
         </div>
-        {isSourceSectionDisabled && (
-          <p className="mt-4 text-xs text-amber-700">
-            Source settings can only be changed by admins.
-          </p>
-        )}
-      </div>
+      )}
 
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <p className="text-sm font-medium text-gray-700">Filters</p>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              onClick={() =>
+                setFilters({
+                  hub: '',
+                  number: '',
+                  pilotId: '',
+                  dateFrom: '',
+                  dateTo: '',
+                })
+              }
+              className="px-3 py-1.5 text-sm bg-white border border-gray-300 rounded-lg hover:bg-gray-50"
+            >
+              Clear Filters
+            </button>
+            <button
+              onClick={() => {
+                if (!canExportFilteredRows) return
+                exportToCSV(filteredRows, 'ride_hailing_filtered_trips')
+              }}
+              className="px-3 py-1.5 text-sm bg-primary text-white rounded-lg hover:bg-primary/90 disabled:opacity-50"
+              disabled={!canExportFilteredRows}
+              title="Select both Date from and Date to to export filtered rows"
+            >
+              Export
+            </button>
+          </div>
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Hub</label>
@@ -391,7 +478,7 @@ export function RideHailing() {
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
         <div>
           <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Today stats</p>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="px-3 py-2 rounded-lg border border-blue-200 bg-blue-50">
               <p className="text-[11px] text-blue-700 uppercase tracking-wide">Total Trips</p>
               <p className="text-lg font-semibold text-blue-900">{periodStats.today.trips}</p>
@@ -411,27 +498,6 @@ export function RideHailing() {
           </div>
         </div>
 
-        <div className="mt-4">
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Current month stats</p>
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-            <div className="px-3 py-2 rounded-lg border border-purple-200 bg-purple-50">
-              <p className="text-[11px] text-purple-700 uppercase tracking-wide">Total Trips</p>
-              <p className="text-lg font-semibold text-purple-900">{periodStats.month.trips}</p>
-            </div>
-            <div className="px-3 py-2 rounded-lg border border-purple-200 bg-purple-50">
-              <p className="text-[11px] text-purple-700 uppercase tracking-wide">Total Vehicles</p>
-              <p className="text-lg font-semibold text-purple-900">{periodStats.month.vehicles}</p>
-            </div>
-            <div className="px-3 py-2 rounded-lg border border-purple-200 bg-purple-50">
-              <p className="text-[11px] text-purple-700 uppercase tracking-wide">Total Pilots</p>
-              <p className="text-lg font-semibold text-purple-900">{periodStats.month.pilots}</p>
-            </div>
-            <div className="px-3 py-2 rounded-lg border border-purple-200 bg-purple-50">
-              <p className="text-[11px] text-purple-700 uppercase tracking-wide">Total Revenue</p>
-              <p className="text-lg font-semibold text-purple-900">₹{periodStats.month.revenue.toFixed(2)}</p>
-            </div>
-          </div>
-        </div>
       </div>
 
       {error ? (
@@ -450,7 +516,7 @@ export function RideHailing() {
         </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <div className="text-sm text-gray-600">
               Showing <span className="font-medium text-gray-900">{filteredRows.length === 0 ? 0 : (currentPage - 1) * rowsPerPage + 1}</span>
               -
@@ -495,22 +561,22 @@ export function RideHailing() {
             </table>
           </div>
 
-          <div className="px-4 py-3 border-t border-gray-200 flex items-center justify-between">
+          <div className="px-4 py-3 border-t border-gray-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
             <p className="text-xs text-gray-500">
               Page {currentPage} of {totalPages}
             </p>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <button
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 disabled={currentPage === 1}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Previous
               </button>
               <button
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 disabled={currentPage >= totalPages}
-                className="px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                className="flex-1 sm:flex-none px-3 py-1.5 text-sm border border-gray-300 rounded-lg bg-white hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next
               </button>

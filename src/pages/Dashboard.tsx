@@ -253,7 +253,7 @@ export function Dashboard() {
     <div>
       <div className="mb-6 flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-text">Dashboard</h1>
+          <h1 className="text-2xl font-bold text-text">SMARO</h1>
           <p className="text-gray-600 mt-1">Overview and all bookings</p>
         </div>
         {can(PERMISSIONS.CREATE_BOOKING) && (

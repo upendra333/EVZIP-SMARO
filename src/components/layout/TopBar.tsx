@@ -72,7 +72,7 @@ export function TopBar() {
       case ROLES.SUPERVISOR:
         return 'Supervisor'
       case ROLES.READ_ONLY:
-        return 'Read Only'
+        return 'Dashboard'
       default:
         return role
     }
@@ -122,7 +122,13 @@ export function TopBar() {
             )}
           </svg>
         </button>
-        <span className="text-lg font-semibold text-text">SMARO - Smart Rides Operations</span>
+        {!isSidebarVisible && (
+          <img
+            src="/evzip_logo.svg"
+            alt="EVZIP"
+            className="h-14 w-auto object-contain"
+          />
+        )}
       </div>
 
       <div className="flex items-center gap-4">

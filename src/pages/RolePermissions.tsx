@@ -1,11 +1,15 @@
 import { useState, useEffect } from 'react'
-import { ROLES } from '../utils/constants'
 import { PERMISSION_LABELS, PERMISSION_CATEGORIES, ROLE_PERMISSIONS, type Permission } from '../utils/permissions'
 import type { Role } from '../utils/types'
 import { useRolePermissions, useUpdateRolePermissions } from '../hooks/useRolePermissions'
 
 // Define role order
 const ROLE_ORDER: Role[] = ['read_only', 'supervisor', 'manager', 'admin']
+
+function getRoleLabel(role: Role): string {
+  if (role === 'read_only') return 'Dashboard'
+  return role.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
+}
 
 export function RolePermissions() {
   const [selectedRole, setSelectedRole] = useState<Role>('supervisor')
@@ -123,7 +127,6 @@ export function RolePermissions() {
         <label className="block text-sm font-medium text-gray-700 mb-2">Select Role</label>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           {ROLE_ORDER.map((role) => {
-            const roleKey = Object.keys(ROLES).find(key => ROLES[key as keyof typeof ROLES] === role) || role
             return (
               <button
                 key={role}
@@ -134,7 +137,7 @@ export function RolePermissions() {
                     : 'bg-white text-gray-700 border-gray-300 hover:bg-gray-50'
                 }`}
               >
-                {roleKey.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                {getRoleLabel(role)}
               </button>
             )
           })}
@@ -145,7 +148,7 @@ export function RolePermissions() {
       <div className="bg-white rounded-lg border border-gray-200 p-6 mb-6">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-lg font-semibold">
-            Permissions for: <span className="text-primary">{selectedRole.replace('_', ' ').toUpperCase()}</span>
+            Permissions for: <span className="text-primary">{getRoleLabel(selectedRole).toUpperCase()}</span>
           </h2>
           <div className="flex gap-3">
             <button
@@ -224,12 +227,11 @@ export function RolePermissions() {
         <h3 className="font-semibold text-gray-900 mb-3">Permission Summary</h3>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {ROLE_ORDER.map((role) => {
-            const roleKey = Object.keys(ROLES).find(key => ROLES[key as keyof typeof ROLES] === role) || role
             const perms = rolePermissions[role] || []
             return (
               <div key={role} className="bg-white p-3 rounded border border-gray-200">
                 <div className="font-medium text-sm text-gray-700 mb-1">
-                  {roleKey.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())}
+                  {getRoleLabel(role)}
                 </div>
                 <div className="text-2xl font-bold text-primary">{perms.length}</div>
                 <div className="text-xs text-gray-500">permissions</div>

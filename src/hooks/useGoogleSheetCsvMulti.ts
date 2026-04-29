@@ -15,8 +15,8 @@ async function fetchText(url: string): Promise<string> {
 }
 
 function parseCsv(text: string): Record<string, string>[] {
-  const parsed = Papa.parse<Record<string, unknown>>(text, {
-    header: true,
+  const parsed = Papa.parse<string[]>(text, {
+    header: false,
     skipEmptyLines: true,
     dynamicTyping: false,
   })
@@ -24,14 +24,40 @@ function parseCsv(text: string): Record<string, string>[] {
     const first = parsed.errors[0]
     throw new Error(first?.message || 'CSV parse error')
   }
-  const rows = (parsed.data || []) as Record<string, unknown>[]
-  return rows.map((r) => {
+
+  const rows = (parsed.data || []) as string[][]
+  if (!rows.length) return []
+
+  const headers = (rows[0] || []).map((h) => (h ?? '').toString().trim())
+  const dataRows = rows.slice(1)
+
+  const indexToColumnLetter = (index: number): string => {
+    let n = index + 1
+    let out = ''
+    while (n > 0) {
+      const rem = (n - 1) % 26
+      out = String.fromCharCode(65 + rem) + out
+      n = Math.floor((n - 1) / 26)
+    }
+    return out
+  }
+
+  return dataRows.map((values) => {
     const out: Record<string, string> = {}
-    Object.entries(r).forEach(([k, v]) => {
-      const key = (k ?? '').trim()
+
+    headers.forEach((header, idx) => {
+      const value = values[idx] == null ? '' : String(values[idx]).trim()
+
+      const key = (header ?? '').trim()
       if (!key) return
-      out[key] = v == null ? '' : String(v).trim()
+      out[key] = value
     })
+
+    values.forEach((raw, idx) => {
+      const col = indexToColumnLetter(idx)
+      out[`__col_${col}`] = raw == null ? '' : String(raw).trim()
+    })
+
     return out
   })
 }
