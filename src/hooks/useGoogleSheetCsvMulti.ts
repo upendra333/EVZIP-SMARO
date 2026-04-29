@@ -15,13 +15,22 @@ async function fetchText(url: string): Promise<string> {
 }
 
 function parseCsv(text: string): Record<string, string>[] {
+  const trimmed = text.trimStart()
+  if (trimmed.startsWith('<!DOCTYPE html') || trimmed.startsWith('<html')) {
+    throw new Error('Google Sheet returned HTML instead of CSV. Ensure the sheet is publicly viewable.')
+  }
+
   const parsed = Papa.parse<string[]>(text, {
     header: false,
     skipEmptyLines: true,
     dynamicTyping: false,
   })
-  if (parsed.errors?.length) {
-    const first = parsed.errors[0]
+
+  const blockingErrors = (parsed.errors || []).filter(
+    (err) => !(err.type === 'Delimiter' && err.code === 'UndetectableDelimiter')
+  )
+  if (blockingErrors.length) {
+    const first = blockingErrors[0]
     throw new Error(first?.message || 'CSV parse error')
   }
 
