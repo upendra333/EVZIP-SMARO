@@ -4,10 +4,11 @@ import type { Role } from './types'
 
 // Define all available permissions
 export const PERMISSIONS = {
-  // Dashboard
+  // SMARO (legacy dashboard)
   VIEW_DASHBOARD: 'view_dashboard',
   
-  // Ride Hailing (Google Sheet reconciliation)
+  // Dashboard and Ride Hailing
+  VIEW_RIDE_HAILING_DASHBOARD: 'view_ride_hailing_dashboard',
   VIEW_RIDE_HAILING: 'view_ride_hailing',
 
   // Bookings
@@ -86,6 +87,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   
   supervisor: [
     PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD,
     PERMISSIONS.VIEW_RIDE_HAILING,
     PERMISSIONS.VIEW_BOOKINGS,
     PERMISSIONS.CREATE_BOOKING,
@@ -113,6 +115,7 @@ export const ROLE_PERMISSIONS: Record<Role, Permission[]> = {
   
   manager: [
     PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD,
     PERMISSIONS.VIEW_RIDE_HAILING,
     PERMISSIONS.VIEW_BOOKINGS,
     PERMISSIONS.CREATE_BOOKING,
@@ -194,7 +197,8 @@ export function checkPermissionWithDB(
 
 // Get human-readable permission labels
 export const PERMISSION_LABELS: Record<Permission, string> = {
-  [PERMISSIONS.VIEW_DASHBOARD]: 'View Dashboard',
+  [PERMISSIONS.VIEW_DASHBOARD]: 'View SMARO',
+  [PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD]: 'View Dashboard',
   [PERMISSIONS.VIEW_RIDE_HAILING]: 'View Ride Hailing',
   [PERMISSIONS.VIEW_BOOKINGS]: 'View Bookings',
   [PERMISSIONS.CREATE_BOOKING]: 'Create Booking',
@@ -247,12 +251,13 @@ export const PERMISSION_LABELS: Record<Permission, string> = {
 // Group permissions by category
 export const PERMISSION_CATEGORIES = {
   Dashboard: [
-    PERMISSIONS.VIEW_DASHBOARD,
+    PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD,
   ],
   'Ride Hailing': [
     PERMISSIONS.VIEW_RIDE_HAILING,
   ],
-  Bookings: [
+  SMARO: [
+    PERMISSIONS.VIEW_DASHBOARD,
     PERMISSIONS.VIEW_BOOKINGS,
     PERMISSIONS.CREATE_BOOKING,
     PERMISSIONS.EDIT_BOOKING,

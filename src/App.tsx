@@ -45,7 +45,7 @@ function App() {
           <Route 
             path={ROUTES.RIDE_HAILING_DASHBOARD} 
             element={
-              <ProtectedRoute permission={PERMISSIONS.VIEW_RIDE_HAILING}>
+              <ProtectedRoute permission={PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD}>
                 <RideHailingDashboard />
               </ProtectedRoute>
             } 

@@ -295,7 +295,7 @@ function EditUserForm({
             onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value={ROLES.READ_ONLY}>Dashboard</option>
+            <option value={ROLES.READ_ONLY}>Management</option>
             <option value={ROLES.SUPERVISOR}>Supervisor</option>
             <option value={ROLES.MANAGER}>Manager</option>
             <option value={ROLES.ADMIN}>Admin</option>
@@ -444,7 +444,7 @@ function AddUserForm({
             onChange={(e) => setFormData({ ...formData, role: e.target.value as Role })}
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
-            <option value={ROLES.READ_ONLY}>Dashboard</option>
+            <option value={ROLES.READ_ONLY}>Management</option>
             <option value={ROLES.SUPERVISOR}>Supervisor</option>
             <option value={ROLES.MANAGER}>Manager</option>
             <option value={ROLES.ADMIN}>Admin</option>

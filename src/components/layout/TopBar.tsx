@@ -72,7 +72,7 @@ export function TopBar() {
       case ROLES.SUPERVISOR:
         return 'Supervisor'
       case ROLES.READ_ONLY:
-        return 'Dashboard'
+        return 'Management'
       default:
         return role
     }

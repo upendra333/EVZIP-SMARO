@@ -7,7 +7,7 @@ import { useRolePermissions, useUpdateRolePermissions } from '../hooks/useRolePe
 const ROLE_ORDER: Role[] = ['read_only', 'supervisor', 'manager', 'admin']
 
 function getRoleLabel(role: Role): string {
-  if (role === 'read_only') return 'Dashboard'
+  if (role === 'read_only') return 'Management'
   return role.replace('_', ' ').replace(/\b\w/g, (l) => l.toUpperCase())
 }
 

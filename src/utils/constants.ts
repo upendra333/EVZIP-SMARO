@@ -25,7 +25,7 @@ export const ROUTES = {
 } as const
 
 export const NAVIGATION_ITEMS = [
-  { name: 'Dashboard', path: ROUTES.RIDE_HAILING_DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_RIDE_HAILING },
+  { name: 'Dashboard', path: ROUTES.RIDE_HAILING_DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD },
   { name: 'Ride Hailing', path: ROUTES.RIDE_HAILING, icon: '🚕', permission: PERMISSIONS.VIEW_RIDE_HAILING },
   { name: 'SMARO', path: ROUTES.DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_DASHBOARD },
   { name: 'Reports', path: ROUTES.REPORTS, icon: '📈', permission: PERMISSIONS.VIEW_REPORTS },

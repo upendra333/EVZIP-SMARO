@@ -88,7 +88,7 @@ export function OperatorModal({ onClose, onSetOperator, currentOperator }: Opera
                 required
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary focus:border-transparent"
               >
-                <option value={ROLES.READ_ONLY}>Dashboard</option>
+                <option value={ROLES.READ_ONLY}>Management</option>
                 <option value={ROLES.SUPERVISOR}>Supervisor</option>
                 <option value={ROLES.MANAGER}>Manager</option>
                 <option value={ROLES.ADMIN}>Admin</option>
