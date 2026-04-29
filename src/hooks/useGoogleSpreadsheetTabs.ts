@@ -44,8 +44,17 @@ export function useGoogleSpreadsheetTabs(params: {
       if (tabs.length === 0) {
         tabs = await fetchWorksheetFeed(spreadsheetId)
       }
-      // Prefer stable ordering by gid
-      return tabs.sort((a, b) => Number(a.gid) - Number(b.gid))
+      // Prefer stable ordering by numeric gid; keep name fallback stable for non-numeric gids.
+      return tabs.sort((a, b) => {
+        const aNum = Number(a.gid)
+        const bNum = Number(b.gid)
+        const aIsNum = Number.isFinite(aNum) && a.gid !== ''
+        const bIsNum = Number.isFinite(bNum) && b.gid !== ''
+        if (aIsNum && bIsNum) return aNum - bNum
+        if (aIsNum) return -1
+        if (bIsNum) return 1
+        return a.name.localeCompare(b.name)
+      })
     },
     staleTime: 60_000,
   })

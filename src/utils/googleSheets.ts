@@ -64,7 +64,6 @@ export function extractGoogleSheetTabsFromHtml(html: string): GoogleSheetTab[] {
   // In this mode we can still fetch CSV by `sheet` name, so synthesize stable gids.
   if (tabs.length === 0) {
     const re3 = /docs-sheet-tab-caption">([\s\S]*?)<\/div>/g
-    let idx = 0
     for (;;) {
       const m = re3.exec(html)
       if (!m) break
@@ -81,7 +80,8 @@ export function extractGoogleSheetTabsFromHtml(html: string): GoogleSheetTab[] {
       const key = `name:${name}`
       if (seen.has(key)) continue
       seen.add(key)
-      tabs.push({ gid: String(idx++), name })
+      // No reliable gid in this fallback path; let callers fetch by sheet name only.
+      tabs.push({ gid: '', name })
     }
   }
 
