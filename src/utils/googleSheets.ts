@@ -60,6 +60,52 @@ export function extractGoogleSheetTabsFromHtml(html: string): GoogleSheetTab[] {
     }
   }
 
+  // Additional fallback: some Google payloads expose sheet titles under
+  // `properties.title` rather than `name`.
+  if (tabs.length === 0) {
+    const reTitle1 = /"sheetId":(\d+)[\s\S]{0,260}?"title":"([^"]+)"/g
+    for (;;) {
+      const m = reTitle1.exec(html)
+      if (!m) break
+      const gid = m[1]
+      const name = m[2]
+      const key = `${gid}:${name}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      tabs.push({ gid, name })
+    }
+  }
+
+  if (tabs.length === 0) {
+    const reTitle2 = /"title":"([^"]+)"[\s\S]{0,260}?"sheetId":(\d+)/g
+    for (;;) {
+      const m = reTitle2.exec(html)
+      if (!m) break
+      const name = m[1]
+      const gid = m[2]
+      const key = `${gid}:${name}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      tabs.push({ gid, name })
+    }
+  }
+
+  // Structured sheet metadata fallback:
+  // "properties":{"sheetId":123,"title":"XXXX", ...}
+  if (tabs.length === 0) {
+    const reProps = /"properties":\{"sheetId":(\d+),"title":"([^"]+)"/g
+    for (;;) {
+      const m = reProps.exec(html)
+      if (!m) break
+      const gid = m[1]
+      const name = m[2]
+      const key = `${gid}:${name}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      tabs.push({ gid, name })
+    }
+  }
+
   // Newer sheet pages often render tab captions in DOM without exposing sheetId nearby.
   // In this mode we can still fetch CSV by `sheet` name, so synthesize stable gids.
   if (tabs.length === 0) {
