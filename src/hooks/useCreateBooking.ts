@@ -4,7 +4,7 @@ import { useOperator } from './useOperator'
 import { playNotificationSound } from '../utils/notificationSound'
 
 // Helper function to ensure trip record exists for a booking
-async function ensureTripExists(type: 'subscription' | 'airport' | 'rental' | 'manual', refId: string, status: string): Promise<void> {
+async function ensureTripExists(type: 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual', refId: string, status: string): Promise<void> {
   // Wait a bit to allow trigger to complete (if it exists)
   await new Promise(resolve => setTimeout(resolve, 100))
   
@@ -369,6 +369,99 @@ export function useCreateRentalBooking() {
       
       // Explicitly refetch todayMetrics for all variations
       await queryClient.refetchQueries({ 
+        predicate: (query) => query.queryKey[0] === 'todayMetrics',
+        type: 'active'
+      })
+    },
+  })
+}
+
+export function useCreateOutstationBooking() {
+  const queryClient = useQueryClient()
+  const { operator } = useOperator()
+
+  return useMutation({
+    mutationFn: async (data: {
+      customer_name: string
+      customer_phone?: string
+      start_at: string
+      end_at: string
+      pickup: string
+      drop: string
+      package_hours: number
+      package_km: number
+      est_km?: number
+      extra_km_rate?: number
+      per_hour_rate?: number
+      fare?: number
+      notes?: string
+      hub_id?: string
+    }) => {
+      const customerId = await getOrCreateCustomer(data.customer_name, data.customer_phone)
+
+      const { data: booking, error } = await supabase
+        .from('outstation_bookings')
+        .insert({
+          customer_id: customerId,
+          start_at: data.start_at,
+          end_at: data.end_at,
+          pickup: data.pickup,
+          drop: data.drop,
+          package_hours: data.package_hours,
+          package_km: data.package_km,
+          est_km: data.est_km,
+          extra_km_rate: data.extra_km_rate ? data.extra_km_rate * 100 : null,
+          per_hour_rate: data.per_hour_rate ? data.per_hour_rate * 100 : null,
+          fare: data.fare ? data.fare * 100 : null,
+          status: 'created',
+          notes: data.notes,
+          hub_id: data.hub_id || null,
+        })
+        .select()
+        .single()
+
+      if (error) throw error
+
+      await ensureTripExists('outstation', booking.id, booking.status)
+
+      await supabase.from('audit_log').insert({
+        actor_name: operator?.name || 'System',
+        object: 'outstation_bookings',
+        object_id: booking.id,
+        action: 'create',
+        diff_json: { ...data },
+      })
+
+      let tripVerified = false
+      for (let i = 0; i < 3; i++) {
+        const { data: trip } = await supabase
+          .from('trips')
+          .select('id')
+          .eq('type', 'outstation')
+          .eq('ref_id', booking.id)
+          .maybeSingle()
+        if (trip) {
+          tripVerified = true
+          break
+        }
+        await new Promise(resolve => setTimeout(resolve, 200))
+      }
+      if (!tripVerified) {
+        console.error(`Warning: Trip not found for outstation booking ${booking.id} after creation`)
+      }
+
+      return booking
+    },
+    onSuccess: async () => {
+      playNotificationSound()
+
+      queryClient.invalidateQueries({ queryKey: ['customers'] })
+      queryClient.invalidateQueries({ queryKey: ['outstationBookings'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' })
+
+      await queryClient.refetchQueries({
         predicate: (query) => query.queryKey[0] === 'todayMetrics',
         type: 'active'
       })

@@ -7,11 +7,11 @@ export function useDeleteRide() {
   const { operator } = useOperator()
 
   return useMutation({
-    mutationFn: async ({ rideId, rideType }: { rideId: string; rideType: 'subscription' | 'airport' | 'rental' | 'manual' }) => {
+    mutationFn: async ({ rideId, rideType }: { rideId: string; rideType: 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual' }) => {
       let tableName = ''
       
       // Normalize rideType to lowercase
-      const normalizedType = rideType.toLowerCase() as 'subscription' | 'airport' | 'rental' | 'manual'
+      const normalizedType = rideType.toLowerCase() as 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual'
       
       switch (normalizedType) {
         case 'subscription':
@@ -22,6 +22,9 @@ export function useDeleteRide() {
           break
         case 'rental':
           tableName = 'rental_bookings'
+          break
+        case 'outstation':
+          tableName = 'outstation_bookings'
           break
         case 'manual':
           tableName = 'manual_rides'
@@ -118,6 +121,7 @@ export function useDeleteRide() {
       queryClient.invalidateQueries({ queryKey: ['subscriptionRides'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['airportBookings'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['rentalBookings'], refetchType: 'active' })
+      queryClient.invalidateQueries({ queryKey: ['outstationBookings'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['manualRides'], refetchType: 'active' })
       queryClient.invalidateQueries({ queryKey: ['auditLogs'] })
     },

@@ -12,6 +12,7 @@
 --   - All subscription rides
 --   - All airport bookings
 --   - All rental bookings
+--   - All outstation bookings
 --   - All manual rides
 --   - All subscriptions
 --   - All customers
@@ -47,16 +48,19 @@ DELETE FROM airport_bookings;
 -- 5. Delete rental bookings (references customers)
 DELETE FROM rental_bookings;
 
--- 6. Delete manual rides (references customers)
+-- 6. Delete outstation bookings (references customers)
+DELETE FROM outstation_bookings;
+
+-- 7. Delete manual rides (references customers)
 DELETE FROM manual_rides;
 
--- 7. Delete subscriptions (references customers)
+-- 8. Delete subscriptions (references customers)
 DELETE FROM subscriptions;
 
--- 8. Delete customers
+-- 9. Delete customers
 DELETE FROM customers;
 
--- 9. Delete audit logs
+-- 10. Delete audit logs
 DELETE FROM audit_log;
 
 COMMIT;
@@ -72,6 +76,8 @@ UNION ALL
 SELECT 'airport_bookings', COUNT(*) FROM airport_bookings
 UNION ALL
 SELECT 'rental_bookings', COUNT(*) FROM rental_bookings
+UNION ALL
+SELECT 'outstation_bookings', COUNT(*) FROM outstation_bookings
 UNION ALL
 SELECT 'manual_rides', COUNT(*) FROM manual_rides
 UNION ALL

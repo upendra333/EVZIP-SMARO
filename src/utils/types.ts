@@ -1,7 +1,7 @@
 // EVZIP Ops Console - Type Definitions
 
 export type TripStatus = 'created' | 'assigned' | 'enroute' | 'completed' | 'no_show' | 'cancelled'
-export type TripType = 'subscription' | 'airport' | 'rental'
+export type TripType = 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual'
 export type Role = string
 
 export interface Operator {

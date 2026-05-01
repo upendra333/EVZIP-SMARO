@@ -4,7 +4,7 @@ import { TRIP_TYPES } from '../utils/constants'
 
 export interface TripDetails {
   id: string
-  type: 'subscription' | 'airport' | 'rental' | 'manual'
+  type: 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual'
   ref_id: string
   status: string
   driver_id: string | null
@@ -32,6 +32,8 @@ export function useTripDetails(tripId: string, tripType: string, refId: string) 
         tableName = 'airport_bookings'
       } else if (tripType === TRIP_TYPES.RENTAL) {
         tableName = 'rental_bookings'
+      } else if (tripType === TRIP_TYPES.OUTSTATION) {
+        tableName = 'outstation_bookings'
       } else if (tripType === TRIP_TYPES.MANUAL) {
         tableName = 'manual_rides'
       } else {
@@ -48,7 +50,7 @@ export function useTripDetails(tripId: string, tripType: string, refId: string) 
         selectFields = 'id, driver_id, vehicle_id, hub_id, customer_id, notes, status, fare, est_km'
         if (tripType === TRIP_TYPES.AIRPORT || tripType === TRIP_TYPES.MANUAL) {
           selectFields += ', pickup_at'
-        } else if (tripType === TRIP_TYPES.RENTAL) {
+        } else if (tripType === TRIP_TYPES.RENTAL || tripType === TRIP_TYPES.OUTSTATION) {
           selectFields += ', start_at, end_at'
         }
       }

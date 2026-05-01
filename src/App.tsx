@@ -114,10 +114,11 @@ function App() {
               </ProtectedRoute>
             } 
           />
-          {/* Legacy routes - kept for backward compatibility but redirect to dashboard */}
+          {/* Legacy URLs — resolve to SMARO dashboard (same as subscriptions / airport) */}
           <Route path={ROUTES.SUBSCRIPTIONS} element={<Dashboard />} />
           <Route path={ROUTES.AIRPORT} element={<Dashboard />} />
           <Route path={ROUTES.RENTALS} element={<Dashboard />} />
+          <Route path={ROUTES.OUTSTATION} element={<Dashboard />} />
           <Route path="*" element={<Navigate to={ROUTES.DASHBOARD} replace />} />
               </Routes>
             </Layout>

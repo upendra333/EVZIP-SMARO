@@ -2541,7 +2541,7 @@ function RidesTab() {
   })
   const deleteMutation = useDeleteRide()
 
-  const handleDelete = async (rideId: string, rideType: 'subscription' | 'airport' | 'rental' | 'manual') => {
+  const handleDelete = async (rideId: string, rideType: 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual') => {
     if (!confirm('Are you sure you want to delete this ride? This action cannot be undone.')) return
     try {
       console.log('Deleting ride:', { rideId, rideType })
@@ -2564,7 +2564,7 @@ function RidesTab() {
       const deletePromises = Array.from(selectedRides).map(key => {
         const [rideId, rideType] = key.split('|')
         console.log('Deleting:', { rideId, rideType })
-        return deleteMutation.mutateAsync({ rideId, rideType: rideType.toLowerCase() as 'subscription' | 'airport' | 'rental' | 'manual' })
+        return deleteMutation.mutateAsync({ rideId, rideType: rideType.toLowerCase() as 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual' })
       })
       await Promise.all(deletePromises)
       setSelectedRides(new Set())
@@ -2702,6 +2702,7 @@ function RidesTab() {
               <option value="subscription">Subscription</option>
               <option value="airport">Airport</option>
               <option value="rental">Rental</option>
+              <option value="outstation">Outstation</option>
               <option value="manual">Manual Ride</option>
             </select>
           </div>

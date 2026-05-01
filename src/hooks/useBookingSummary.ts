@@ -17,6 +17,11 @@ export interface BookingSummary {
     today: number
     upcoming: number
   }
+  outstation: {
+    total: number
+    today: number
+    upcoming: number
+  }
   manual: {
     total: number
     today: number
@@ -67,6 +72,13 @@ export function useBookingSummary() {
 
       if (rentalError) throw rentalError
 
+      const { data: outstationData, error: outstationError } = await supabase
+        .from('outstation_bookings')
+        .select('start_at, status')
+        .is('deleted_at', null)
+
+      if (outstationError) throw outstationError
+
       // Fetch ALL manual rides
       const { data: manualData, error: manualError } = await supabase
         .from('manual_rides')
@@ -112,6 +124,16 @@ export function useBookingSummary() {
         return bookingDate > todayStr
       }).length || 0
 
+      const outstationToday = outstationData?.filter((b) => {
+        if (!b.start_at) return false
+        return getDateOnly(b.start_at) === todayStr
+      }).length || 0
+
+      const outstationUpcoming = outstationData?.filter((b) => {
+        if (!b.start_at) return false
+        return getDateOnly(b.start_at) > todayStr
+      }).length || 0
+
       // Process manual rides
       const manualToday = manualData?.filter((b) => {
         if (!b.pickup_at) return false
@@ -140,6 +162,11 @@ export function useBookingSummary() {
           total: rentalData?.length || 0,
           today: rentalToday,
           upcoming: rentalUpcoming,
+        },
+        outstation: {
+          total: outstationData?.length || 0,
+          today: outstationToday,
+          upcoming: outstationUpcoming,
         },
         manual: {
           total: manualData?.length || 0,

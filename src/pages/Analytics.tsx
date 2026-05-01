@@ -118,6 +118,7 @@ export function Analytics() {
       subscription: (row.subscription_revenue || 0) / 100,
       airport: (row.airport_revenue || 0) / 100,
       rental: (row.rental_revenue || 0) / 100,
+      outstation: (row.outstation_revenue || 0) / 100,
       manual: (row.manual_revenue || 0) / 100,
     }))
   }, [summaryData, viewType])
@@ -132,6 +133,7 @@ export function Analytics() {
       subscription: row.subscription_count || 0,
       airport: row.airport_count || 0,
       rental: row.rental_count || 0,
+      outstation: row.outstation_count || 0,
       manual: row.manual_count || 0,
     }))
   }, [summaryData, viewType])
@@ -143,14 +145,16 @@ export function Analytics() {
         subscription: acc.subscription + (row.subscription_revenue || 0),
         airport: acc.airport + (row.airport_revenue || 0),
         rental: acc.rental + (row.rental_revenue || 0),
+        outstation: acc.outstation + (row.outstation_revenue || 0),
         manual: acc.manual + (row.manual_revenue || 0),
       }),
-      { subscription: 0, airport: 0, rental: 0, manual: 0 }
+      { subscription: 0, airport: 0, rental: 0, outstation: 0, manual: 0 }
     )
     return [
       { name: 'Subscription', value: totals.subscription / 100, count: summaryData.reduce((sum, r) => sum + (r.subscription_count || 0), 0) },
       { name: 'Airport', value: totals.airport / 100, count: summaryData.reduce((sum, r) => sum + (r.airport_count || 0), 0) },
       { name: 'Rental', value: totals.rental / 100, count: summaryData.reduce((sum, r) => sum + (r.rental_count || 0), 0) },
+      { name: 'Outstation', value: totals.outstation / 100, count: summaryData.reduce((sum, r) => sum + (r.outstation_count || 0), 0) },
       { name: 'Manual', value: totals.manual / 100, count: summaryData.reduce((sum, r) => sum + (r.manual_count || 0), 0) },
     ]
   }, [summaryData])
@@ -210,6 +214,7 @@ export function Analytics() {
       subscription: Number(row.subscription_km || 0),
       airport: Number(row.airport_km || 0),
       rental: Number(row.rental_km || 0),
+      outstation: Number(row.outstation_km || 0),
       manual: Number(row.manual_km || 0),
     }))
   }, [summaryData, viewType])
@@ -408,6 +413,7 @@ export function Analytics() {
                 <Line type="monotone" dataKey="subscription" stroke="#4a90e2" strokeWidth={2} name="Subscription" />
                 <Line type="monotone" dataKey="airport" stroke="#f5a623" strokeWidth={2} name="Airport" />
                 <Line type="monotone" dataKey="rental" stroke="#d0021b" strokeWidth={2} name="Rental" />
+                <Line type="monotone" dataKey="outstation" stroke="#8b572a" strokeWidth={2} name="Outstation" />
                 <Line type="monotone" dataKey="manual" stroke="#9013fe" strokeWidth={2} name="Manual" />
               </LineChart>
             </ResponsiveContainer>
@@ -427,6 +433,7 @@ export function Analytics() {
                 <Line type="monotone" dataKey="subscription" stroke="#4a90e2" strokeWidth={2} name="Subscription" />
                 <Line type="monotone" dataKey="airport" stroke="#f5a623" strokeWidth={2} name="Airport" />
                 <Line type="monotone" dataKey="rental" stroke="#d0021b" strokeWidth={2} name="Rental" />
+                <Line type="monotone" dataKey="outstation" stroke="#8b572a" strokeWidth={2} name="Outstation" />
                 <Line type="monotone" dataKey="manual" stroke="#9013fe" strokeWidth={2} name="Manual" />
               </LineChart>
             </ResponsiveContainer>
@@ -446,6 +453,7 @@ export function Analytics() {
                 <Line type="monotone" dataKey="subscription" stroke="#4a90e2" strokeWidth={2} name="Subscription" />
                 <Line type="monotone" dataKey="airport" stroke="#f5a623" strokeWidth={2} name="Airport" />
                 <Line type="monotone" dataKey="rental" stroke="#d0021b" strokeWidth={2} name="Rental" />
+                <Line type="monotone" dataKey="outstation" stroke="#8b572a" strokeWidth={2} name="Outstation" />
                 <Line type="monotone" dataKey="manual" stroke="#9013fe" strokeWidth={2} name="Manual" />
               </LineChart>
             </ResponsiveContainer>

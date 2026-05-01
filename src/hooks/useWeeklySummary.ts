@@ -16,6 +16,9 @@ export interface WeeklySummaryRow {
   rental_count: number
   rental_revenue: number
   rental_km?: number
+  outstation_count?: number
+  outstation_revenue?: number
+  outstation_km?: number
   manual_count?: number
   manual_revenue?: number
   manual_km?: number

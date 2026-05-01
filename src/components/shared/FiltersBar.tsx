@@ -40,10 +40,11 @@ export function FiltersBar({ filters, onFiltersChange }: FiltersBarProps) {
             className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary"
           >
             <option value="">All Types</option>
-            <option value={TRIP_TYPES.SUBSCRIPTION}>Subscription</option>
-            <option value={TRIP_TYPES.AIRPORT}>Airport</option>
-            <option value={TRIP_TYPES.RENTAL}>Rental</option>
+            <option value={TRIP_TYPES.SUBSCRIPTION}>Subscriptions</option>
             <option value={TRIP_TYPES.MANUAL}>Manual Ride</option>
+            <option value={TRIP_TYPES.AIRPORT}>Airport Booking</option>
+            <option value={TRIP_TYPES.RENTAL}>Rental Booking</option>
+            <option value={TRIP_TYPES.OUTSTATION}>Outstation Trip</option>
           </select>
         </div>
 

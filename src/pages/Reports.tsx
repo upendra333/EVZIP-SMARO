@@ -287,6 +287,7 @@ export function Reports() {
         subscription: trips.filter(t => t.type === 'subscription').reduce((sum, t) => sum + (t.fare || 0), 0),
         airport: trips.filter(t => t.type === 'airport').reduce((sum, t) => sum + (t.fare || 0), 0),
         rental: trips.filter(t => t.type === 'rental').reduce((sum, t) => sum + (t.fare || 0), 0),
+        outstation: trips.filter(t => t.type === 'outstation').reduce((sum, t) => sum + (t.fare || 0), 0),
         manual: trips.filter(t => t.type === 'manual').reduce((sum, t) => sum + (t.fare || 0), 0),
       }
 
@@ -462,6 +463,7 @@ export function Reports() {
         subscription: trips.filter(t => t.type === 'subscription').reduce((sum, t) => sum + (t.fare || 0), 0),
         airport: trips.filter(t => t.type === 'airport').reduce((sum, t) => sum + (t.fare || 0), 0),
         rental: trips.filter(t => t.type === 'rental').reduce((sum, t) => sum + (t.fare || 0), 0),
+        outstation: trips.filter(t => t.type === 'outstation').reduce((sum, t) => sum + (t.fare || 0), 0),
         manual: trips.filter(t => t.type === 'manual').reduce((sum, t) => sum + (t.fare || 0), 0),
       }
 
@@ -650,6 +652,7 @@ export function Reports() {
         subscription: trips.filter(t => t.type === 'subscription').length,
         airport: trips.filter(t => t.type === 'airport').length,
         rental: trips.filter(t => t.type === 'rental').length,
+        outstation: trips.filter(t => t.type === 'outstation').length,
         manual: trips.filter(t => t.type === 'manual').length,
       }
 
@@ -797,6 +800,7 @@ export function Reports() {
         subscription: trips.filter(t => t.type === 'subscription').length,
         airport: trips.filter(t => t.type === 'airport').length,
         rental: trips.filter(t => t.type === 'rental').length,
+        outstation: trips.filter(t => t.type === 'outstation').length,
         manual: trips.filter(t => t.type === 'manual').length,
       }
 
@@ -933,6 +937,7 @@ export function Reports() {
       subscription: revenueAnalysisData.filter(t => t.type === 'subscription').reduce((sum, t) => sum + (t.fare || 0), 0),
       airport: revenueAnalysisData.filter(t => t.type === 'airport').reduce((sum, t) => sum + (t.fare || 0), 0),
       rental: revenueAnalysisData.filter(t => t.type === 'rental').reduce((sum, t) => sum + (t.fare || 0), 0),
+      outstation: revenueAnalysisData.filter(t => t.type === 'outstation').reduce((sum, t) => sum + (t.fare || 0), 0),
       manual: revenueAnalysisData.filter(t => t.type === 'manual').reduce((sum, t) => sum + (t.fare || 0), 0),
     }
 
@@ -1248,13 +1253,14 @@ export function Reports() {
       subscription: { cash: 0, upi: 0, others: 0, cashCount: 0, upiCount: 0, othersCount: 0 },
       airport: { cash: 0, upi: 0, others: 0, cashCount: 0, upiCount: 0, othersCount: 0 },
       rental: { cash: 0, upi: 0, others: 0, cashCount: 0, upiCount: 0, othersCount: 0 },
+      outstation: { cash: 0, upi: 0, others: 0, cashCount: 0, upiCount: 0, othersCount: 0 },
       manual: { cash: 0, upi: 0, others: 0, cashCount: 0, upiCount: 0, othersCount: 0 },
     }
     paymentModeData.forEach(trip => {
       if (trip.status === 'completed') {
         const payment = paymentModePayments[trip.id]
         if (payment?.method && trip.fare) {
-          const type = trip.type as 'subscription' | 'airport' | 'rental' | 'manual'
+          const type = trip.type as 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual'
           if (payment.method === 'Cash') {
             byTripType[type].cash += trip.fare
             byTripType[type].cashCount += 1
@@ -1402,10 +1408,11 @@ export function Reports() {
       subscription: { cancelled: 0 },
       airport: { cancelled: 0 },
       rental: { cancelled: 0 },
+      outstation: { cancelled: 0 },
       manual: { cancelled: 0 },
     }
     cancellationData.forEach(trip => {
-      const type = trip.type as 'subscription' | 'airport' | 'rental' | 'manual'
+      const type = trip.type as 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual'
       if (trip.status === 'cancelled') {
         byTripType[type].cancelled += 1
       }
@@ -1690,6 +1697,9 @@ export function Reports() {
       'Rental Count': row.rental_count,
       'Rental Revenue (₹)': (row.rental_revenue / 100).toFixed(2),
       'Rental KM': (row.rental_km || 0).toFixed(2),
+      'Outstation Count': row.outstation_count || 0,
+      'Outstation Revenue (₹)': ((row.outstation_revenue || 0) / 100).toFixed(2),
+      'Outstation KM': ((row.outstation_km || 0)).toFixed(2),
       'Manual Count': row.manual_count || 0,
       'Manual Revenue (₹)': ((row.manual_revenue || 0) / 100).toFixed(2),
       'Manual KM': ((row.manual_km || 0)).toFixed(2),
@@ -1725,6 +1735,9 @@ export function Reports() {
       'Rental Count': row.rental_count,
       'Rental Revenue (₹)': (row.rental_revenue / 100).toFixed(2),
       'Rental KM': (row.rental_km || 0).toFixed(2),
+      'Outstation Count': row.outstation_count || 0,
+      'Outstation Revenue (₹)': ((row.outstation_revenue || 0) / 100).toFixed(2),
+      'Outstation KM': ((row.outstation_km || 0)).toFixed(2),
       'Manual Count': row.manual_count || 0,
       'Manual Revenue (₹)': ((row.manual_revenue || 0) / 100).toFixed(2),
       'Manual KM': ((row.manual_km || 0)).toFixed(2),
@@ -1759,6 +1772,9 @@ export function Reports() {
       'Rental Count': row.rental_count,
       'Rental Revenue (₹)': (row.rental_revenue / 100).toFixed(2),
       'Rental KM': (row.rental_km || 0).toFixed(2),
+      'Outstation Count': row.outstation_count || 0,
+      'Outstation Revenue (₹)': ((row.outstation_revenue || 0) / 100).toFixed(2),
+      'Outstation KM': ((row.outstation_km || 0)).toFixed(2),
       'Manual Count': row.manual_count || 0,
       'Manual Revenue (₹)': ((row.manual_revenue || 0) / 100).toFixed(2),
       'Manual KM': ((row.manual_km || 0)).toFixed(2),
@@ -1793,6 +1809,9 @@ export function Reports() {
       'Rental Count': row.rental_count,
       'Rental Revenue (₹)': (row.rental_revenue / 100).toFixed(2),
       'Rental KM': (row.rental_km || 0).toFixed(2),
+      'Outstation Count': row.outstation_count || 0,
+      'Outstation Revenue (₹)': ((row.outstation_revenue || 0) / 100).toFixed(2),
+      'Outstation KM': ((row.outstation_km || 0)).toFixed(2),
       'Manual Count': row.manual_count || 0,
       'Manual Revenue (₹)': ((row.manual_revenue || 0) / 100).toFixed(2),
       'Manual KM': ((row.manual_km || 0)).toFixed(2),
@@ -1874,6 +1893,7 @@ export function Reports() {
       'Subscription Revenue (₹)': (driver.revenueByType.subscription / 100).toFixed(2),
       'Airport Revenue (₹)': (driver.revenueByType.airport / 100).toFixed(2),
       'Rental Revenue (₹)': (driver.revenueByType.rental / 100).toFixed(2),
+      'Outstation Revenue (₹)': (driver.revenueByType.outstation / 100).toFixed(2),
       'Manual Revenue (₹)': (driver.revenueByType.manual / 100).toFixed(2),
       'Cash Revenue (₹)': (driver.paymentBreakdown.cash / 100).toFixed(2),
       'UPI Revenue (₹)': (driver.paymentBreakdown.upi / 100).toFixed(2),
@@ -1916,6 +1936,7 @@ export function Reports() {
       'Subscription Revenue (₹)': (vehicle.revenueByType.subscription / 100).toFixed(2),
       'Airport Revenue (₹)': (vehicle.revenueByType.airport / 100).toFixed(2),
       'Rental Revenue (₹)': (vehicle.revenueByType.rental / 100).toFixed(2),
+      'Outstation Revenue (₹)': (vehicle.revenueByType.outstation / 100).toFixed(2),
       'Manual Revenue (₹)': (vehicle.revenueByType.manual / 100).toFixed(2),
       'Driver Assignments': vehicle.driverAssignments,
       'Maintenance Status': vehicle.maintenanceStatus,
@@ -1950,6 +1971,7 @@ export function Reports() {
       'Subscription Trips': customer.tripTypeBreakdown.subscription,
       'Airport Trips': customer.tripTypeBreakdown.airport,
       'Rental Trips': customer.tripTypeBreakdown.rental,
+      'Outstation Trips': customer.tripTypeBreakdown.outstation,
       'Manual Trips': customer.tripTypeBreakdown.manual,
       'Preferred Payment Mode': customer.preferredPaymentMode,
       'Cash Payments': customer.paymentModeCount.cash,
@@ -1984,6 +2006,7 @@ export function Reports() {
       'Subscription Trips': hub.tripTypeDistribution.subscription,
       'Airport Trips': hub.tripTypeDistribution.airport,
       'Rental Trips': hub.tripTypeDistribution.rental,
+      'Outstation Trips': hub.tripTypeDistribution.outstation,
       'Manual Trips': hub.tripTypeDistribution.manual,
       'Driver Count': hub.driverCount,
       'Vehicle Count': hub.vehicleCount,
@@ -2020,6 +2043,7 @@ export function Reports() {
       'Subscription Revenue (₹)',
       'Airport Revenue (₹)',
       'Rental Revenue (₹)',
+      'Outstation Revenue (₹)',
       'Manual Revenue (₹)',
       'Cash Revenue (₹)',
       'UPI Revenue (₹)',
@@ -2033,6 +2057,7 @@ export function Reports() {
     const tripTypeTotal = revenueAnalysisMetrics.revenueByTripType.subscription + 
                          revenueAnalysisMetrics.revenueByTripType.airport + 
                          revenueAnalysisMetrics.revenueByTripType.rental + 
+                         revenueAnalysisMetrics.revenueByTripType.outstation +
                          revenueAnalysisMetrics.revenueByTripType.manual
     exportData.push({
       'Category': 'Revenue by Trip Type',
@@ -2040,6 +2065,7 @@ export function Reports() {
       'Subscription Revenue (₹)': (revenueAnalysisMetrics.revenueByTripType.subscription / 100).toFixed(2),
       'Airport Revenue (₹)': (revenueAnalysisMetrics.revenueByTripType.airport / 100).toFixed(2),
       'Rental Revenue (₹)': (revenueAnalysisMetrics.revenueByTripType.rental / 100).toFixed(2),
+      'Outstation Revenue (₹)': (revenueAnalysisMetrics.revenueByTripType.outstation / 100).toFixed(2),
       'Manual Revenue (₹)': (revenueAnalysisMetrics.revenueByTripType.manual / 100).toFixed(2),
       'Cash Revenue (₹)': '',
       'UPI Revenue (₹)': '',
@@ -2059,6 +2085,7 @@ export function Reports() {
       'Subscription Revenue (₹)': '',
       'Airport Revenue (₹)': '',
       'Rental Revenue (₹)': '',
+      'Outstation Revenue (₹)': '',
       'Manual Revenue (₹)': '',
       'Cash Revenue (₹)': (revenueAnalysisMetrics.revenueByPaymentMode.cash / 100).toFixed(2),
       'UPI Revenue (₹)': (revenueAnalysisMetrics.revenueByPaymentMode.upi / 100).toFixed(2),
@@ -2076,6 +2103,7 @@ export function Reports() {
         'Subscription Revenue (₹)': '',
         'Airport Revenue (₹)': '',
         'Rental Revenue (₹)': '',
+        'Outstation Revenue (₹)': '',
         'Manual Revenue (₹)': '',
         'Cash Revenue (₹)': '',
         'UPI Revenue (₹)': '',
@@ -2094,6 +2122,7 @@ export function Reports() {
         'Subscription Revenue (₹)': '',
         'Airport Revenue (₹)': '',
         'Rental Revenue (₹)': '',
+        'Outstation Revenue (₹)': '',
         'Manual Revenue (₹)': '',
         'Cash Revenue (₹)': '',
         'UPI Revenue (₹)': '',
@@ -2112,6 +2141,7 @@ export function Reports() {
         'Subscription Revenue (₹)': '',
         'Airport Revenue (₹)': '',
         'Rental Revenue (₹)': '',
+        'Outstation Revenue (₹)': '',
         'Manual Revenue (₹)': '',
         'Cash Revenue (₹)': '',
         'UPI Revenue (₹)': '',
@@ -2130,6 +2160,7 @@ export function Reports() {
         'Subscription Revenue (₹)': '',
         'Airport Revenue (₹)': '',
         'Rental Revenue (₹)': '',
+        'Outstation Revenue (₹)': '',
         'Manual Revenue (₹)': '',
         'Cash Revenue (₹)': '',
         'UPI Revenue (₹)': '',
@@ -2148,6 +2179,7 @@ export function Reports() {
         'Subscription Revenue (₹)': '',
         'Airport Revenue (₹)': '',
         'Rental Revenue (₹)': '',
+        'Outstation Revenue (₹)': '',
         'Manual Revenue (₹)': '',
         'Cash Revenue (₹)': '',
         'UPI Revenue (₹)': '',
@@ -2528,6 +2560,8 @@ export function Reports() {
       airport_revenue: acc.airport_revenue + row.airport_revenue,
       rental_count: acc.rental_count + row.rental_count,
       rental_revenue: acc.rental_revenue + row.rental_revenue,
+      outstation_count: acc.outstation_count + (row.outstation_count || 0),
+      outstation_revenue: acc.outstation_revenue + (row.outstation_revenue || 0),
       manual_count: acc.manual_count + (row.manual_count || 0),
       manual_revenue: acc.manual_revenue + (row.manual_revenue || 0),
     }),
@@ -2540,6 +2574,8 @@ export function Reports() {
       airport_revenue: 0,
       rental_count: 0,
       rental_revenue: 0,
+      outstation_count: 0,
+      outstation_revenue: 0,
       manual_count: 0,
       manual_revenue: 0,
     }
@@ -2552,6 +2588,8 @@ export function Reports() {
     airport_revenue: 0,
     rental_count: 0,
     rental_revenue: 0,
+    outstation_count: 0,
+    outstation_revenue: 0,
     manual_count: 0,
     manual_revenue: 0,
   }
@@ -2566,6 +2604,8 @@ export function Reports() {
       airport_revenue: acc.airport_revenue + row.airport_revenue,
       rental_count: acc.rental_count + row.rental_count,
       rental_revenue: acc.rental_revenue + row.rental_revenue,
+      outstation_count: acc.outstation_count + (row.outstation_count || 0),
+      outstation_revenue: acc.outstation_revenue + (row.outstation_revenue || 0),
       manual_count: acc.manual_count + (row.manual_count || 0),
       manual_revenue: acc.manual_revenue + (row.manual_revenue || 0),
     }),
@@ -2578,6 +2618,8 @@ export function Reports() {
       airport_revenue: 0,
       rental_count: 0,
       rental_revenue: 0,
+      outstation_count: 0,
+      outstation_revenue: 0,
       manual_count: 0,
       manual_revenue: 0,
     }
@@ -2590,6 +2632,8 @@ export function Reports() {
     airport_revenue: 0,
     rental_count: 0,
     rental_revenue: 0,
+    outstation_count: 0,
+    outstation_revenue: 0,
     manual_count: 0,
     manual_revenue: 0,
   }
@@ -2604,6 +2648,8 @@ export function Reports() {
       airport_revenue: acc.airport_revenue + row.airport_revenue,
       rental_count: acc.rental_count + row.rental_count,
       rental_revenue: acc.rental_revenue + row.rental_revenue,
+      outstation_count: acc.outstation_count + (row.outstation_count || 0),
+      outstation_revenue: acc.outstation_revenue + (row.outstation_revenue || 0),
       manual_count: acc.manual_count + (row.manual_count || 0),
       manual_revenue: acc.manual_revenue + (row.manual_revenue || 0),
     }),
@@ -2616,6 +2662,8 @@ export function Reports() {
       airport_revenue: 0,
       rental_count: 0,
       rental_revenue: 0,
+      outstation_count: 0,
+      outstation_revenue: 0,
       manual_count: 0,
       manual_revenue: 0,
     }
@@ -2628,6 +2676,8 @@ export function Reports() {
     airport_revenue: 0,
     rental_count: 0,
     rental_revenue: 0,
+    outstation_count: 0,
+    outstation_revenue: 0,
     manual_count: 0,
     manual_revenue: 0,
   }
@@ -2642,6 +2692,8 @@ export function Reports() {
       airport_revenue: acc.airport_revenue + row.airport_revenue,
       rental_count: acc.rental_count + row.rental_count,
       rental_revenue: acc.rental_revenue + row.rental_revenue,
+      outstation_count: acc.outstation_count + (row.outstation_count || 0),
+      outstation_revenue: acc.outstation_revenue + (row.outstation_revenue || 0),
       manual_count: acc.manual_count + (row.manual_count || 0),
       manual_revenue: acc.manual_revenue + (row.manual_revenue || 0),
     }),
@@ -2654,6 +2706,8 @@ export function Reports() {
       airport_revenue: 0,
       rental_count: 0,
       rental_revenue: 0,
+      outstation_count: 0,
+      outstation_revenue: 0,
       manual_count: 0,
       manual_revenue: 0,
     }
@@ -2666,6 +2720,8 @@ export function Reports() {
     airport_revenue: 0,
     rental_count: 0,
     rental_revenue: 0,
+    outstation_count: 0,
+    outstation_revenue: 0,
     manual_count: 0,
     manual_revenue: 0,
   }
@@ -3865,6 +3921,7 @@ export function Reports() {
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sub Revenue</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Airport Revenue</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Rental Revenue</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Outstation Revenue</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Manual Revenue</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Cash Revenue</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">UPI Revenue</th>
@@ -3903,6 +3960,7 @@ export function Reports() {
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(driver.revenueByType.subscription)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(driver.revenueByType.airport)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(driver.revenueByType.rental)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(driver.revenueByType.outstation)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(driver.revenueByType.manual)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(driver.paymentBreakdown.cash)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(driver.paymentBreakdown.upi)}</td>
@@ -4078,6 +4136,7 @@ export function Reports() {
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sub Revenue</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Airport Revenue</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Rental Revenue</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Outstation Revenue</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Manual Revenue</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Driver Assignments</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Maintenance Status</th>
@@ -4107,6 +4166,7 @@ export function Reports() {
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(vehicle.revenueByType.subscription)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(vehicle.revenueByType.airport)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(vehicle.revenueByType.rental)}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(vehicle.revenueByType.outstation)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{formatCurrency(vehicle.revenueByType.manual)}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={vehicle.driverAssignments}>
                             {vehicle.driverAssignments}
@@ -4258,6 +4318,7 @@ export function Reports() {
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sub Trips</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Airport Trips</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Rental Trips</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Outstation Trips</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Manual Trips</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Payment Preference</th>
                         <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase">Last Trip</th>
@@ -4279,6 +4340,7 @@ export function Reports() {
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{customer.tripTypeBreakdown.subscription}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{customer.tripTypeBreakdown.airport}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{customer.tripTypeBreakdown.rental}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600 text-right">{customer.tripTypeBreakdown.outstation}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{customer.tripTypeBreakdown.manual}</td>
                           <td className="px-4 py-3 text-sm">
                             <span className={`px-2 py-1 rounded text-xs ${
@@ -4447,6 +4509,7 @@ export function Reports() {
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Sub Trips</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Airport Trips</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Rental Trips</th>
+                        <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Outstation Trips</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Manual Trips</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Drivers</th>
                         <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 uppercase">Vehicles</th>
@@ -4466,6 +4529,7 @@ export function Reports() {
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{hub.tripTypeDistribution.subscription}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{hub.tripTypeDistribution.airport}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{hub.tripTypeDistribution.rental}</td>
+                          <td className="px-4 py-3 text-sm text-gray-600 text-right">{hub.tripTypeDistribution.outstation}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{hub.tripTypeDistribution.manual}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{hub.driverCount}</td>
                           <td className="px-4 py-3 text-sm text-gray-600 text-right">{hub.vehicleCount}</td>
@@ -4607,7 +4671,7 @@ export function Reports() {
                 {/* Revenue by Trip Type */}
                 <div className="bg-white rounded-lg border border-gray-200 p-6">
                   <h3 className="text-lg font-semibold mb-4">Revenue by Trip Type</h3>
-                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                     <div className="text-center p-4 bg-blue-50 rounded-lg">
                       <div className="text-sm text-gray-600">Subscription</div>
                       <div className="text-xl font-bold text-blue-600">{formatCurrency(revenueAnalysisMetrics.revenueByTripType.subscription)}</div>
@@ -4619,6 +4683,10 @@ export function Reports() {
                     <div className="text-center p-4 bg-yellow-50 rounded-lg">
                       <div className="text-sm text-gray-600">Rental</div>
                       <div className="text-xl font-bold text-yellow-600">{formatCurrency(revenueAnalysisMetrics.revenueByTripType.rental)}</div>
+                    </div>
+                    <div className="text-center p-4 bg-amber-50 rounded-lg">
+                      <div className="text-sm text-gray-600">Outstation</div>
+                      <div className="text-xl font-bold text-amber-800">{formatCurrency(revenueAnalysisMetrics.revenueByTripType.outstation)}</div>
                     </div>
                     <div className="text-center p-4 bg-purple-50 rounded-lg">
                       <div className="text-sm text-gray-600">Manual</div>

@@ -29,7 +29,7 @@ export type Database = {
       trips: {
         Row: {
           id: string
-          type: 'subscription' | 'airport' | 'rental'
+          type: 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual'
           ref_id: string
           created_at: string
           started_at: string | null
@@ -91,6 +91,8 @@ export type Database = {
           package_km: number
           start_at: string
           end_at: string
+          pickup?: string | null
+          drop?: string | null
           est_km: number | null
           extra_km_rate: number | null
           per_hour_rate: number | null
@@ -106,6 +108,32 @@ export type Database = {
         }
         Insert: Omit<Database['public']['Tables']['rental_bookings']['Row'], 'id' | 'created_at' | 'updated_at'>
         Update: Partial<Database['public']['Tables']['rental_bookings']['Insert']>
+      }
+      outstation_bookings: {
+        Row: {
+          id: string
+          customer_id: string
+          package_hours: number
+          package_km: number
+          start_at: string
+          end_at: string
+          pickup?: string | null
+          drop?: string | null
+          est_km: number | null
+          extra_km_rate: number | null
+          per_hour_rate: number | null
+          fare: number | null
+          status: string
+          driver_id: string | null
+          vehicle_id: string | null
+          notes: string | null
+          hub_id: string | null
+          created_at: string
+          updated_at: string
+          deleted_at: string | null
+        }
+        Insert: Omit<Database['public']['Tables']['outstation_bookings']['Row'], 'id' | 'created_at' | 'updated_at'>
+        Update: Partial<Database['public']['Tables']['outstation_bookings']['Insert']>
       }
       drivers: {
         Row: {

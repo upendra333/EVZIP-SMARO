@@ -59,10 +59,11 @@ export function useAllBookings(filters?: {
       const subscriptionTripIds = tripsData.filter(t => t.type === 'subscription').map(t => t.ref_id)
       const airportTripIds = tripsData.filter(t => t.type === 'airport').map(t => t.ref_id)
       const rentalTripIds = tripsData.filter(t => t.type === 'rental').map(t => t.ref_id)
+      const outstationTripIds = tripsData.filter(t => t.type === 'outstation').map(t => t.ref_id)
       const manualTripIds = tripsData.filter(t => t.type === 'manual').map(t => t.ref_id)
 
       // Fetch related data for each type
-      const [subscriptionData, airportData, rentalData, manualData] = await Promise.all([
+      const [subscriptionData, airportData, rentalData, outstationData, manualData] = await Promise.all([
         subscriptionTripIds.length > 0
           ? supabase
               .from('subscription_rides')
@@ -125,6 +126,25 @@ export function useAllBookings(filters?: {
               .in('id', rentalTripIds)
               .is('deleted_at', null)
           : Promise.resolve({ data: [], error: null }),
+        outstationTripIds.length > 0
+          ? supabase
+              .from('outstation_bookings')
+              .select(`
+                id,
+                start_at,
+                pickup,
+                drop,
+                fare,
+                est_km,
+                drivers(name),
+                vehicles(reg_no),
+                customers(name, phone),
+                hub_id,
+                hubs(name)
+              `)
+              .in('id', outstationTripIds)
+              .is('deleted_at', null)
+          : Promise.resolve({ data: [], error: null }),
         manualTripIds.length > 0
           ? supabase
               .from('manual_rides')
@@ -156,6 +176,9 @@ export function useAllBookings(filters?: {
       if (rentalData.error) {
         console.error('Error fetching rental bookings:', rentalData.error)
       }
+      if (outstationData.error) {
+        console.error('Error fetching outstation bookings:', outstationData.error)
+      }
       if (manualData.error) {
         console.error('Error fetching manual rides:', manualData.error)
       }
@@ -164,11 +187,13 @@ export function useAllBookings(filters?: {
       const foundSubscriptionIds = new Set((subscriptionData.data || []).map((sr: any) => sr.id))
       const foundAirportIds = new Set((airportData.data || []).map((ab: any) => ab.id))
       const foundRentalIds = new Set((rentalData.data || []).map((rb: any) => rb.id))
+      const foundOutstationIds = new Set((outstationData.data || []).map((ob: any) => ob.id))
       const foundManualIds = new Set((manualData.data || []).map((mr: any) => mr.id))
       
       const missingSubscriptionIds = subscriptionTripIds.filter(id => !foundSubscriptionIds.has(id))
       const missingAirportIds = airportTripIds.filter(id => !foundAirportIds.has(id))
       const missingRentalIds = rentalTripIds.filter(id => !foundRentalIds.has(id))
+      const missingOutstationIds = outstationTripIds.filter(id => !foundOutstationIds.has(id))
       const missingManualIds = manualTripIds.filter(id => !foundManualIds.has(id))
       
       if (missingSubscriptionIds.length > 0) {
@@ -179,6 +204,9 @@ export function useAllBookings(filters?: {
       }
       if (missingRentalIds.length > 0) {
         console.warn(`Missing rental bookings data for trip ref_ids:`, missingRentalIds)
+      }
+      if (missingOutstationIds.length > 0) {
+        console.warn(`Missing outstation bookings data for trip ref_ids:`, missingOutstationIds)
       }
       if (missingManualIds.length > 0) {
         console.warn(`Missing manual rides data for trip ref_ids:`, missingManualIds)
@@ -195,6 +223,10 @@ export function useAllBookings(filters?: {
       }, {})
       const rentalMap = (rentalData.data || []).reduce((acc: Record<string, any>, rb: any) => {
         acc[rb.id] = rb
+        return acc
+      }, {})
+      const outstationMap = (outstationData.data || []).reduce((acc: Record<string, any>, ob: any) => {
+        acc[ob.id] = ob
         return acc
       }, {})
       const manualMap = (manualData.data || []).reduce((acc: Record<string, any>, mr: any) => {
@@ -278,6 +310,30 @@ export function useAllBookings(filters?: {
               ref_id: trip.ref_id,
               est_km: rb.est_km || null,
               actual_km: null, // rental_bookings doesn't have actual_km
+            }
+          }
+        } else if (trip.type === 'outstation') {
+          const ob = outstationMap[trip.ref_id]
+          if (ob) {
+            const hubName = ob.hubs?.name || null
+            const route = (ob.pickup && ob.drop) ? `${ob.pickup} → ${ob.drop}` : null
+            return {
+              id: trip.id,
+              type: 'outstation',
+              created_at: trip.created_at,
+              start_time: ob.start_at,
+              hub_route: hubName || route,
+              hub_name: hubName,
+              route: route,
+              customer_name: ob.customers?.name || null,
+              customer_phone: ob.customers?.phone || null,
+              driver_name: ob.drivers?.name || null,
+              vehicle_reg: ob.vehicles?.reg_no || null,
+              status: trip.status,
+              fare: ob.fare,
+              ref_id: trip.ref_id,
+              est_km: ob.est_km || null,
+              actual_km: null,
             }
           }
         } else if (trip.type === 'manual') {

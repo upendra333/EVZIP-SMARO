@@ -6,9 +6,21 @@ interface MetricCardProps {
   icon?: ReactNode
   onClick?: () => void
   variant?: 'default' | 'primary' | 'warning' | 'danger' | 'info'
+  /** Override default title typography (e.g. summary chips) */
+  titleClassName?: string
+  /** Override default value typography */
+  valueClassName?: string
 }
 
-export function MetricCard({ title, value, icon, onClick, variant = 'default' }: MetricCardProps) {
+export function MetricCard({
+  title,
+  value,
+  icon,
+  onClick,
+  variant = 'default',
+  titleClassName,
+  valueClassName,
+}: MetricCardProps) {
   const variantStyles = {
     default: 'bg-white border-gray-200 hover:border-primary',
     primary: 'bg-primary/10 border-primary',
@@ -27,9 +39,15 @@ export function MetricCard({ title, value, icon, onClick, variant = 'default' }:
       `}
     >
       <div className="flex items-start justify-between">
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-600 mb-1">{title}</p>
-          <p className="text-2xl font-bold text-text">{value}</p>
+        <div className="flex-1 min-w-0">
+          <p
+            className={
+              titleClassName ?? 'text-sm font-medium text-gray-600 mb-1'
+            }
+          >
+            {title}
+          </p>
+          <p className={valueClassName ?? 'text-2xl font-bold text-text'}>{value}</p>
         </div>
         {icon && (
           <div className="text-3xl opacity-50">{icon}</div>

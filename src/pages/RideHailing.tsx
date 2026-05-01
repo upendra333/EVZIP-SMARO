@@ -117,6 +117,7 @@ export function RideHailing() {
     return (localStorage.getItem('rideHailing.autoRefresh') || 'on') === 'on'
   })
   const [currentPage, setCurrentPage] = useState(1)
+  const [sourceExpanded, setSourceExpanded] = useState(false)
   const rowsPerPage = 50
   const { data: savedColumnMap = {} } = useRideHailingColumnMap()
   const updateColumnMapMutation = useUpdateRideHailingColumnMap()
@@ -268,13 +269,14 @@ export function RideHailing() {
     setColumnMapDraft(savedColumnMap)
   }, [savedColumnMap])
 
+  /** Today’s aggregates for rows that match the filters above (and today’s calendar date). */
   const periodStats = useMemo(() => {
     const now = new Date()
     const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 0, 0, 0, 0)
     const todayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
 
     const calc = (from: Date, to: Date) => {
-      const trips = normalizedTrips.filter((trip) => {
+      const trips = filteredRows.filter((trip) => {
         if (!trip.timestampDate) return false
         return trip.timestampDate >= from && trip.timestampDate <= to
       })
@@ -294,7 +296,7 @@ export function RideHailing() {
     return {
       today: calc(todayStart, todayEnd),
     }
-  }, [normalizedTrips])
+  }, [filteredRows])
 
   const persistSettings = () => {
     localStorage.setItem('rideHailing.sheetUrl', sheetUrl)
@@ -323,7 +325,25 @@ export function RideHailing() {
       </div>
 
       {!isSourceSectionDisabled && (
-        <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
+        <div className="bg-white rounded-lg border border-gray-200 mb-6 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setSourceExpanded((v) => !v)}
+            className="w-full flex items-center justify-between gap-3 px-4 py-3 text-left text-gray-700 hover:bg-gray-50 transition-colors"
+            aria-expanded={sourceExpanded}
+          >
+            <div>
+              <span className="text-sm font-medium text-gray-800">Data source</span>
+              <p className="text-xs text-gray-500 mt-0.5">
+                Google Sheet URL, refresh, and column mapping
+              </p>
+            </div>
+            <span className="text-gray-500 shrink-0 text-sm" aria-hidden>
+              {sourceExpanded ? '▼' : '▶'}
+            </span>
+          </button>
+          {sourceExpanded && (
+            <div className="px-4 pb-4 pt-2 border-t border-gray-100">
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Google Sheet link</label>
@@ -425,6 +445,8 @@ export function RideHailing() {
               ))}
             </div>
           </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -518,7 +540,12 @@ export function RideHailing() {
 
       <div className="bg-white p-4 rounded-lg border border-gray-200 mb-6">
         <div>
-          <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-3">Today stats</p>
+          <div className="mb-3">
+            <p className="text-xs font-semibold uppercase tracking-wide text-gray-500">Today stats</p>
+            <p className="text-xs text-gray-500 mt-1">
+              Counts trips on today&apos;s date that also match the filters above (including date range).
+            </p>
+          </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
             <div className="px-3 py-2 rounded-lg border border-blue-200 bg-blue-50">
               <p className="text-[11px] text-blue-700 uppercase tracking-wide">Total Trips</p>

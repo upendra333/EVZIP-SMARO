@@ -9,17 +9,25 @@ import { TripDrawer } from '../components/shared/TripDrawer'
 import { CreateAirportBookingModal } from '../components/shared/CreateAirportBookingModal'
 import { CreateSubscriptionModal } from '../components/shared/CreateSubscriptionModal'
 import { CreateRentalBookingModal } from '../components/shared/CreateRentalBookingModal'
+import { CreateOutstationBookingModal } from '../components/shared/CreateOutstationBookingModal'
 import { CreateManualRideModal } from '../components/shared/CreateManualRideModal'
 import { TRIP_STATUSES } from '../utils/constants'
 import { useOperator } from '../hooks/useOperator'
 import { PERMISSIONS } from '../utils/permissions'
+
+const BOOKING_SUMMARY_TITLE_CLASS =
+  'text-base md:text-lg font-semibold text-gray-900 mb-1.5 leading-tight'
+const BOOKING_SUMMARY_VALUE_CLASS =
+  'text-xs md:text-sm font-medium text-gray-600 leading-snug'
 
 export function Dashboard() {
   const [filters, setFilters] = useState<Filters>({})
   const [selectedTrip, setSelectedTrip] = useState<TripListItem | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [showAddDropdown, setShowAddDropdown] = useState(false)
-  const [createModalType, setCreateModalType] = useState<'airport' | 'subscription_booking' | 'rental' | 'manual' | null>(null)
+  const [createModalType, setCreateModalType] = useState<
+    'airport' | 'subscription_booking' | 'rental' | 'outstation' | 'manual' | null
+  >(null)
 
   const { can } = useOperator()
   const { error: metricsError } = useTodayMetrics() // Keep for error display
@@ -214,6 +222,7 @@ export function Dashboard() {
         airport: { today: 0, upcoming: 0 },
         subscriptions: { today: 0, upcoming: 0 },
         rentals: { today: 0, upcoming: 0 },
+        outstation: { today: 0, upcoming: 0 },
         manual: { today: 0, upcoming: 0 },
       }
     }
@@ -225,6 +234,7 @@ export function Dashboard() {
     const airport = bookings.filter(b => b.type === 'airport')
     const subscriptions = bookings.filter(b => b.type === 'subscription')
     const rentals = bookings.filter(b => b.type === 'rental')
+    const outstation = bookings.filter(b => b.type === 'outstation')
     const manual = bookings.filter(b => b.type === 'manual')
 
     const calculateTodayAndUpcoming = (bookingList: TripListItem[]) => {
@@ -245,6 +255,7 @@ export function Dashboard() {
       airport: calculateTodayAndUpcoming(airport),
       subscriptions: calculateTodayAndUpcoming(subscriptions),
       rentals: calculateTodayAndUpcoming(rentals),
+      outstation: calculateTodayAndUpcoming(outstation),
       manual: calculateTodayAndUpcoming(manual),
     }
   }, [bookings])
@@ -268,21 +279,30 @@ export function Dashboard() {
             <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-10">
               <button
                 onClick={() => {
-                  setCreateModalType('airport')
+                  setCreateModalType('subscription_booking')
                   setShowAddDropdown(false)
                 }}
                 className="w-full text-left px-4 py-2 hover:bg-gray-50 rounded-t-lg"
               >
-                ✈️ Airport Booking
+                📅 Subscriptions
               </button>
               <button
                 onClick={() => {
-                  setCreateModalType('subscription_booking')
+                  setCreateModalType('manual')
                   setShowAddDropdown(false)
                 }}
                 className="w-full text-left px-4 py-2 hover:bg-gray-50"
               >
-                📅 Subscription Booking
+                🚖 Manual Ride
+              </button>
+              <button
+                onClick={() => {
+                  setCreateModalType('airport')
+                  setShowAddDropdown(false)
+                }}
+                className="w-full text-left px-4 py-2 hover:bg-gray-50"
+              >
+                ✈️ Airport Booking
               </button>
               <button
                 onClick={() => {
@@ -295,12 +315,12 @@ export function Dashboard() {
               </button>
               <button
                 onClick={() => {
-                  setCreateModalType('manual')
+                  setCreateModalType('outstation')
                   setShowAddDropdown(false)
                 }}
                 className="w-full text-left px-4 py-2 hover:bg-gray-50 rounded-b-lg"
               >
-                🚖 Manual Ride
+                🛣️ Outstation Trip
               </button>
             </div>
             )}
@@ -486,34 +506,51 @@ export function Dashboard() {
       {/* Booking Summary Cards */}
       <div className="mb-6">
         <h2 className="text-lg font-semibold text-text mb-4">Booking Summary</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          <MetricCard
-            title="Airport Bookings"
-            value={bookingsLoading ? '...' : `${bookingSummary.airport.today} today, ${bookingSummary.airport.upcoming} upcoming`}
-            icon="✈️"
-            variant="info"
-            onClick={() => handleCardClick('type', 'airport')}
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
           <MetricCard
             title="Subscriptions"
             value={bookingsLoading ? '...' : `${bookingSummary.subscriptions.today} today, ${bookingSummary.subscriptions.upcoming} upcoming`}
             icon="🔄"
             variant="primary"
+            titleClassName={BOOKING_SUMMARY_TITLE_CLASS}
+            valueClassName={BOOKING_SUMMARY_VALUE_CLASS}
             onClick={() => handleCardClick('type', 'subscription')}
           />
           <MetricCard
-            title="Rentals"
-            value={bookingsLoading ? '...' : `${bookingSummary.rentals.today} today, ${bookingSummary.rentals.upcoming} upcoming`}
-            icon="🚕"
-            variant="warning"
-            onClick={() => handleCardClick('type', 'rental')}
-          />
-          <MetricCard
-            title="Manual Rides"
+            title="Manual Ride"
             value={bookingsLoading ? '...' : `${bookingSummary.manual.today} today, ${bookingSummary.manual.upcoming} upcoming`}
             icon="🚖"
             variant="info"
+            titleClassName={BOOKING_SUMMARY_TITLE_CLASS}
+            valueClassName={BOOKING_SUMMARY_VALUE_CLASS}
             onClick={() => handleCardClick('type', 'manual')}
+          />
+          <MetricCard
+            title="Airport Booking"
+            value={bookingsLoading ? '...' : `${bookingSummary.airport.today} today, ${bookingSummary.airport.upcoming} upcoming`}
+            icon="✈️"
+            variant="info"
+            titleClassName={BOOKING_SUMMARY_TITLE_CLASS}
+            valueClassName={BOOKING_SUMMARY_VALUE_CLASS}
+            onClick={() => handleCardClick('type', 'airport')}
+          />
+          <MetricCard
+            title="Rental Booking"
+            value={bookingsLoading ? '...' : `${bookingSummary.rentals.today} today, ${bookingSummary.rentals.upcoming} upcoming`}
+            icon="🚕"
+            variant="warning"
+            titleClassName={BOOKING_SUMMARY_TITLE_CLASS}
+            valueClassName={BOOKING_SUMMARY_VALUE_CLASS}
+            onClick={() => handleCardClick('type', 'rental')}
+          />
+          <MetricCard
+            title="Outstation Trip"
+            value={bookingsLoading ? '...' : `${bookingSummary.outstation.today} today, ${bookingSummary.outstation.upcoming} upcoming`}
+            icon="🛣️"
+            variant="warning"
+            titleClassName={BOOKING_SUMMARY_TITLE_CLASS}
+            valueClassName={BOOKING_SUMMARY_VALUE_CLASS}
+            onClick={() => handleCardClick('type', 'outstation')}
           />
         </div>
       </div>
@@ -555,6 +592,13 @@ export function Dashboard() {
       />
       <CreateRentalBookingModal
         isOpen={createModalType === 'rental'}
+        onClose={() => {
+          setCreateModalType(null)
+          setShowAddDropdown(false)
+        }}
+      />
+      <CreateOutstationBookingModal
+        isOpen={createModalType === 'outstation'}
         onClose={() => {
           setCreateModalType(null)
           setShowAddDropdown(false)

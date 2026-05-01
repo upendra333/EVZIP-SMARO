@@ -55,7 +55,7 @@ export function Audit() {
       if (filters.object === 'rides') {
         // Map "rides" to booking tables
         return {
-          objects: ['subscription_rides', 'airport_bookings', 'rental_bookings', 'manual_rides'],
+          objects: ['subscription_rides', 'airport_bookings', 'rental_bookings', 'outstation_bookings', 'manual_rides'],
         }
       } else if (filters.object && dataManagementObjects.includes(filters.object)) {
         return { object: filters.object }

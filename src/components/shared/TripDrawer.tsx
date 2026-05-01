@@ -15,7 +15,7 @@ import { useOperator } from '../../hooks/useOperator'
 import { useMutation, useQueryClient, useQuery } from '@tanstack/react-query'
 import { supabase } from '../../lib/supabase'
 import type { TripListItem } from '../../hooks/useTodayTrips'
-import { TRIP_TYPES } from '../../utils/constants'
+import { TRIP_TYPES, bookingTableFromTripType, tripUsesStartEndRange } from '../../utils/constants'
 import { validateFutureDateTime, validateEndAfterStart, validatePositiveNumber } from '../../utils/validation'
 
 interface TripDrawerProps {
@@ -264,13 +264,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     mutationFn: async (driverId: string | null) => {
       if (!trip) throw new Error('No trip selected')
 
-      const tableName = trip.type === TRIP_TYPES.SUBSCRIPTION
-        ? 'subscription_rides'
-        : trip.type === TRIP_TYPES.AIRPORT
-        ? 'airport_bookings'
-        : trip.type === TRIP_TYPES.RENTAL
-        ? 'rental_bookings'
-        : 'manual_rides'
+      const tableName = bookingTableFromTripType(trip.type)
 
       const { error } = await supabase
         .from(tableName)
@@ -283,6 +277,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['rentalBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['outstationBookings'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' }),
         queryClient.invalidateQueries({ 
           queryKey: ['todayMetrics'],
@@ -298,13 +294,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     mutationFn: async (vehicleId: string | null) => {
       if (!trip) throw new Error('No trip selected')
 
-      const tableName = trip.type === TRIP_TYPES.SUBSCRIPTION
-        ? 'subscription_rides'
-        : trip.type === TRIP_TYPES.AIRPORT
-        ? 'airport_bookings'
-        : trip.type === TRIP_TYPES.RENTAL
-        ? 'rental_bookings'
-        : 'manual_rides'
+      const tableName = bookingTableFromTripType(trip.type)
 
       const { error } = await supabase
         .from(tableName)
@@ -318,6 +308,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['rentalBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['outstationBookings'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' }),
         queryClient.invalidateQueries({ 
           queryKey: ['todayMetrics'],
@@ -333,13 +325,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     mutationFn: async (notes: string) => {
       if (!trip) throw new Error('No trip selected')
 
-      const tableName = trip.type === TRIP_TYPES.SUBSCRIPTION
-        ? 'subscription_rides'
-        : trip.type === TRIP_TYPES.AIRPORT
-        ? 'airport_bookings'
-        : trip.type === TRIP_TYPES.RENTAL
-        ? 'rental_bookings'
-        : 'manual_rides'
+      const tableName = bookingTableFromTripType(trip.type)
 
       const { error } = await supabase
         .from(tableName)
@@ -352,6 +338,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['rentalBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['outstationBookings'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' }),
         queryClient.invalidateQueries({ 
           queryKey: ['todayMetrics'],
@@ -368,13 +356,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     mutationFn: async (fareInRupees: number | null) => {
       if (!trip) throw new Error('No trip selected')
 
-      const tableName = trip.type === TRIP_TYPES.SUBSCRIPTION
-        ? 'subscription_rides'
-        : trip.type === TRIP_TYPES.AIRPORT
-        ? 'airport_bookings'
-        : trip.type === TRIP_TYPES.RENTAL
-        ? 'rental_bookings'
-        : 'manual_rides'
+      const tableName = bookingTableFromTripType(trip.type)
 
       const fareInPaise = fareInRupees === null ? null : Math.round(fareInRupees * 100)
 
@@ -389,6 +371,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['rentalBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['outstationBookings'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' }),
         queryClient.invalidateQueries({ 
           queryKey: ['todayMetrics'],
@@ -431,6 +415,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['rentalBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['outstationBookings'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' }),
         queryClient.invalidateQueries({ 
           queryKey: ['todayMetrics'],
@@ -449,8 +435,12 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       const startAtISO = datetimeLocalToISO(data.startAt)
       const endAtISO = datetimeLocalToISO(data.endAt)
 
+      if (!tripUsesStartEndRange(trip.type)) {
+        throw new Error('This trip does not support start/end updates')
+      }
+
       const { error } = await supabase
-        .from('rental_bookings')
+        .from(bookingTableFromTripType(trip.type))
         .update({ 
           start_at: startAtISO, 
           end_at: endAtISO, 
@@ -464,6 +454,8 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['todayTrips'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['allBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['rentalBookings'], refetchType: 'active' }),
+        queryClient.invalidateQueries({ queryKey: ['outstationBookings'], refetchType: 'active' }),
         queryClient.invalidateQueries({ queryKey: ['bookingSummary'], refetchType: 'active' }),
         queryClient.invalidateQueries({ 
           queryKey: ['todayMetrics'],
@@ -543,13 +535,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
     mutationFn: async (data: { estKm: number | null; actualKm?: number | null }) => {
       if (!trip) throw new Error('No trip selected')
 
-      const tableName = trip.type === TRIP_TYPES.SUBSCRIPTION
-        ? 'subscription_rides'
-        : trip.type === TRIP_TYPES.AIRPORT
-        ? 'airport_bookings'
-        : trip.type === TRIP_TYPES.RENTAL
-        ? 'rental_bookings'
-        : 'manual_rides'
+      const tableName = bookingTableFromTripType(trip.type)
 
       const updateData: any = {
         est_km: data.estKm,
@@ -678,7 +664,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
           }
           await updatePickupAt.mutateAsync(pendingPickupAt)
         }
-      } else if (trip.type === TRIP_TYPES.RENTAL) {
+      } else if (tripUsesStartEndRange(trip.type)) {
         const startAtChanged = pendingStartAt !== isoToDatetimeLocal(currentStartAt)
         const endAtChanged = pendingEndAt !== isoToDatetimeLocal(currentEndAt)
         if ((startAtChanged || endAtChanged) && pendingStartAt && pendingEndAt) {
@@ -825,7 +811,11 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
           setShowStatusModal(false)
           // Reset pending changes when drawer closes - values will be reset by useEffect when trip changes
         }}
-        title={`Trip Details - ${trip.type.charAt(0).toUpperCase() + trip.type.slice(1)}`}
+        title={`Trip Details - ${
+          trip.type === TRIP_TYPES.OUTSTATION
+            ? 'Outstation ride'
+            : trip.type.charAt(0).toUpperCase() + trip.type.slice(1)
+        }`}
       >
         <div className="space-y-6">
           {/* Trip Info */}
@@ -846,7 +836,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
             </div>
             <div>
               <label className="text-sm font-medium text-gray-500">
-                {trip.type === TRIP_TYPES.RENTAL ? 'Start & End Time' : 'Pickup Time'}
+                {tripUsesStartEndRange(trip.type) ? 'Start & End Time' : 'Pickup Time'}
               </label>
               {(trip.type === TRIP_TYPES.AIRPORT || trip.type === TRIP_TYPES.MANUAL) && (
                 <input
@@ -857,7 +847,7 @@ export function TripDrawer({ trip, isOpen, onClose }: TripDrawerProps) {
                   className="w-full mt-1 px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary text-text"
                 />
               )}
-              {trip.type === TRIP_TYPES.RENTAL && (
+              {tripUsesStartEndRange(trip.type) && (
                 <div className="space-y-2 mt-1">
                   <input
                     type="datetime-local"

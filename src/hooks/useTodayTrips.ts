@@ -3,7 +3,7 @@ import { supabase } from '../lib/supabase'
 
 export interface TripListItem {
   id: string
-  type: 'subscription' | 'airport' | 'rental' | 'manual'
+  type: 'subscription' | 'airport' | 'rental' | 'outstation' | 'manual'
   created_at: string | null // Booking creation time
   start_time: string | null
   hub_route: string | null // Keep for backward compatibility

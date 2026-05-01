@@ -46,6 +46,8 @@ export function TripsTable({ trips, onRowClick, isLoading }: TripsTableProps) {
         return 'Airport'
       case TRIP_TYPES.RENTAL:
         return 'Rental'
+      case TRIP_TYPES.OUTSTATION:
+        return 'Outstation'
       case TRIP_TYPES.MANUAL:
         return 'Manual Ride'
       default:
