@@ -16,9 +16,10 @@ const ROLE_PERMISSION_PERMISSIONS: Permission[] = ['manage_roles', 'manage_permi
 const PERMISSION_CONTAINER_ORDER = [
   'Dashboard',
   'Ride Hailing',
+  'Ride Hailing Reports',
   'SMARO',
-  'Reports',
-  'Analytics',
+  'SMARO Reports',
+  'SMARO Analytics',
   'Customers',
   'Drivers',
   'Vehicles',
@@ -37,7 +38,7 @@ function getRoleLabel(role: string): string {
 export function RolePermissions() {
   const [selectedRole, setSelectedRole] = useState<string>('supervisor')
   const [newRoleName, setNewRoleName] = useState('')
-  const { data: dbPermissions, isLoading: isLoadingPermissions } = useRolePermissions()
+  const { data: dbPermissions, isLoading: isLoadingPermissions, error: rolePermissionsError } = useRolePermissions()
   const updatePermissionsMutation = useUpdateRolePermissions()
   
   // Initialize with database permissions or fallback to hardcoded defaults
@@ -188,6 +189,13 @@ export function RolePermissions() {
             <p className="text-sm text-yellow-800">
               ⚠️ Database permissions not available. Using default permissions. 
               Please run the migration: <code className="bg-yellow-100 px-1 rounded">database/19_create_role_permissions_table.sql</code>
+            </p>
+          </div>
+        )}
+        {rolePermissionsError && (
+          <div className="mt-2 p-3 bg-red-50 border border-red-200 rounded-lg">
+            <p className="text-sm text-red-800">
+              Failed to load role permissions: {(rolePermissionsError as Error).message}
             </p>
           </div>
         )}

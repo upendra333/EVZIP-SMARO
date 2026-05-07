@@ -8,6 +8,7 @@ import { Audit } from './pages/Audit'
 import { DataManagement } from './pages/DataManagement'
 import { RideHailing } from './pages/RideHailing'
 import { RideHailingDashboard } from './pages/RideHailingDashboard'
+import { RideHailingReports } from './pages/RideHailingReports'
 import { RolePermissions } from './pages/RolePermissions'
 import { UserManagement } from './pages/UserManagement'
 import { Login } from './pages/Login'
@@ -63,6 +64,14 @@ function App() {
             element={
               <ProtectedRoute permission={PERMISSIONS.VIEW_RIDE_HAILING}>
                 <RideHailing />
+              </ProtectedRoute>
+            } 
+          />
+          <Route 
+            path={ROUTES.RIDE_HAILING_REPORTS} 
+            element={
+              <ProtectedRoute permission={PERMISSIONS.VIEW_RIDE_HAILING_REPORTS}>
+                <RideHailingReports />
               </ProtectedRoute>
             } 
           />

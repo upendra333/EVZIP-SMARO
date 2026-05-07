@@ -149,7 +149,7 @@ export function RideHailing() {
     spreadsheetId,
     tabs: dataTabs,
     enabled: !!spreadsheetId,
-    refetchIntervalMs: autoRefresh ? 30_000 : undefined,
+    refetchIntervalMs: autoRefresh ? 60_000 : undefined,
   })
 
   const normalizedTrips = useMemo<NormalizedTrip[]>(() => {
@@ -384,10 +384,10 @@ export function RideHailing() {
                     autoRefresh ? 'bg-green-50 border-green-200 text-green-800' : 'bg-gray-50 border-gray-200 text-gray-700'
                   }`}
                 >
-                  {autoRefresh ? 'ON (30s)' : 'OFF'}
+                  {autoRefresh ? 'ON (60s)' : 'OFF'}
                 </button>
                 <p className="mt-2 text-xs text-gray-500">
-                  Live stats will refetch every 30 seconds when enabled.
+                  Live stats will refetch every 60 seconds when enabled.
                 </p>
               </div>
             </div>

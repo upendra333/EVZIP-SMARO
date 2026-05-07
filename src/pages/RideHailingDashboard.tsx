@@ -228,7 +228,7 @@ export function RideHailingDashboard() {
     spreadsheetId,
     tabs: dataTabs,
     enabled: !!spreadsheetId,
-    refetchIntervalMs: 30_000,
+    refetchIntervalMs: 60_000,
   })
 
   const normalizedTrips = useMemo<NormalizedTrip[]>(() => {
@@ -452,7 +452,7 @@ export function RideHailingDashboard() {
           </div>
             </div>
             <p className="mt-3 text-xs text-gray-500">
-              {isFetching ? 'Refreshing...' : 'Live refresh every 30s'} • Using source from Ride Hailing settings
+              {isFetching ? 'Refreshing...' : 'Live refresh every 60s'} • Using source from Ride Hailing settings
             </p>
           </>
         )}

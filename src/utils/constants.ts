@@ -15,6 +15,7 @@ export const ROUTES = {
   RENTALS: '/rentals',
   OUTSTATION: '/bookings/outstation',
   RIDE_HAILING: '/ride-hailing',
+  RIDE_HAILING_REPORTS: '/ride-hailing/reports',
   REPORTS: '/reports',
   ANALYTICS: '/analytics',
   IMPORTS: '/imports',
@@ -30,14 +31,30 @@ export type NavigationItem = {
   path: string
   icon: string
   permission?: typeof PERMISSIONS[keyof typeof PERMISSIONS]
+  children?: NavigationItem[]
 }
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
   { name: 'Dashboard', path: ROUTES.RIDE_HAILING_DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD },
-  { name: 'Ride Hailing', path: ROUTES.RIDE_HAILING, icon: '🚕', permission: PERMISSIONS.VIEW_RIDE_HAILING },
-  { name: 'SMARO', path: ROUTES.DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_DASHBOARD },
-  { name: 'Reports', path: ROUTES.REPORTS, icon: '📈', permission: PERMISSIONS.VIEW_REPORTS },
-  { name: 'Analytics', path: ROUTES.ANALYTICS, icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
+  {
+    name: 'Ride Hailing',
+    path: ROUTES.RIDE_HAILING,
+    icon: '🚕',
+    permission: PERMISSIONS.VIEW_RIDE_HAILING,
+    children: [
+      { name: 'Ride Hailing Reports', path: ROUTES.RIDE_HAILING_REPORTS, icon: '📑', permission: PERMISSIONS.VIEW_RIDE_HAILING_REPORTS },
+    ],
+  },
+  {
+    name: 'SMARO',
+    path: ROUTES.DASHBOARD,
+    icon: '📊',
+    permission: PERMISSIONS.VIEW_DASHBOARD,
+    children: [
+      { name: 'SMARO Reports', path: ROUTES.REPORTS, icon: '📈', permission: PERMISSIONS.VIEW_REPORTS },
+      { name: 'SMARO Analytics', path: ROUTES.ANALYTICS, icon: '📊', permission: PERMISSIONS.VIEW_ANALYTICS },
+    ],
+  },
   { name: 'Data Management', path: ROUTES.DATA_MANAGEMENT, icon: '🗂️', permission: PERMISSIONS.VIEW_CUSTOMERS },
   { name: 'Imports', path: ROUTES.IMPORTS, icon: '📥', permission: PERMISSIONS.VIEW_IMPORTS },
   { name: 'Audit', path: ROUTES.AUDIT, icon: '📋', permission: PERMISSIONS.VIEW_AUDIT },

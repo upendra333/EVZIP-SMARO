@@ -67,8 +67,8 @@ export function Analytics() {
   const hubId = selectedHub || null
 
   // Fetch summary data
-  const { data: dailyData, isLoading: dailyLoading } = useDailySummary(fromDate, toDate, hubId)
-  const { data: weeklyData, isLoading: weeklyLoading } = useWeeklySummary(fromDate, toDate, hubId)
+  const { data: dailyData, isLoading: dailyLoading, error: dailyError } = useDailySummary(fromDate, toDate, hubId)
+  const { data: weeklyData, isLoading: weeklyLoading, error: weeklyError } = useWeeklySummary(fromDate, toDate, hubId)
   const { data: allBookings } = useAllBookings({
     dateFrom: fromDate,
     dateTo: toDate,
@@ -252,7 +252,7 @@ export function Analytics() {
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900">Analytics & Insights</h1>
+        <h1 className="text-3xl font-bold text-gray-900">SMARO Analytics & Insights</h1>
       </div>
 
       {/* Filters */}
@@ -362,6 +362,12 @@ export function Analytics() {
       </div>
 
       {/* Key Metrics */}
+      {(dailyError || weeklyError) && (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+          {(dailyError as Error)?.message || (weeklyError as Error)?.message || 'Failed to load analytics summary data.'}
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
         <div className="bg-white rounded-lg border border-gray-200 p-6">
           <div className="text-sm text-gray-600 mb-1">Total Revenue</div>

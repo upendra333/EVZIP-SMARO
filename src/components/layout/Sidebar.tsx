@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { NAVIGATION_ITEMS } from '../../utils/constants'
+import { NAVIGATION_ITEMS, type NavigationItem } from '../../utils/constants'
 import { useOperator } from '../../hooks/useOperator'
 import { useSidebar } from '../../hooks/useSidebar'
 
@@ -15,10 +15,20 @@ export function Sidebar() {
     }
   }
 
-  const visibleItems = NAVIGATION_ITEMS.filter((item) => {
-    if (!item.permission) return true
-    return can(item.permission)
-  })
+  const filterVisibleItems = (items: NavigationItem[]): NavigationItem[] => {
+    return items
+      .filter((item) => {
+        if (!item.permission) return true
+        return can(item.permission)
+      })
+      .map((item) => ({
+        ...item,
+        children: item.children ? filterVisibleItems(item.children) : undefined,
+      }))
+      .filter((item) => item.children === undefined || item.children.length > 0 || !item.children)
+  }
+
+  const visibleItems = filterVisibleItems(NAVIGATION_ITEMS)
 
   return (
     <>
@@ -51,7 +61,8 @@ export function Sidebar() {
         <nav className="flex-1 overflow-y-auto p-4">
           <ul className="space-y-2">
             {visibleItems.map((item) => {
-              const isActive = location.pathname === item.path
+              const isParentActive = location.pathname === item.path
+
               return (
                 <li key={item.path}>
                   <Link
@@ -59,7 +70,7 @@ export function Sidebar() {
                     onClick={handleLinkClick}
                     className={`
                     flex items-center gap-3 px-4 py-3 rounded-lg transition-colors
-                    ${isActive
+                    ${isParentActive
                       ? 'bg-primary text-white font-medium'
                       : 'text-gray-700 hover:bg-gray-100'
                     }
@@ -68,6 +79,33 @@ export function Sidebar() {
                     <span className="text-xl">{item.icon}</span>
                     <span>{item.name}</span>
                   </Link>
+
+                  {item.children && item.children.length > 0 && (
+                    <ul className="mt-1 space-y-1 pl-10">
+                      {item.children.map((child) => {
+                        const isChildActive = location.pathname === child.path
+
+                        return (
+                          <li key={child.path}>
+                            <Link
+                              to={child.path}
+                              onClick={handleLinkClick}
+                              className={`
+                              flex items-center gap-2 px-3 py-2 rounded-lg text-sm transition-colors
+                              ${isChildActive
+                                ? 'bg-primary text-white font-medium'
+                                : 'text-gray-600 hover:bg-gray-100'
+                              }
+                            `}
+                            >
+                              <span>{child.icon}</span>
+                              <span>{child.name}</span>
+                            </Link>
+                          </li>
+                        )
+                      })}
+                    </ul>
+                  )}
                 </li>
               )
             })}

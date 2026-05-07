@@ -1627,13 +1627,13 @@ export function Reports() {
     }
   }, [tripWiseData])
   
-  const { data: dailyData, isLoading: dailyLoading } = useDailySummary(
+  const { data: dailyData, isLoading: dailyLoading, error: dailyError } = useDailySummary(
     dailyDate,
     dailyDate,
     dailyHub || null
   )
   
-  const { data: weeklyData, isLoading: weeklyLoading } = useWeeklySummary(
+  const { data: weeklyData, isLoading: weeklyLoading, error: weeklyError } = useWeeklySummary(
     weeklyStartDate,
     weeklyEndDate,
     weeklyHub || null
@@ -1649,13 +1649,13 @@ export function Reports() {
   // Actually, we need monthlyMonth+1: monthlyMonth=1 -> Date(2024, 2, 0) = Jan 31
   const monthlyEndDate = new Date(monthlyYear, monthlyMonth + 1, 0).toISOString().split('T')[0]
   
-  const { data: monthlyData, isLoading: monthlyLoading } = useDailySummary(
+  const { data: monthlyData, isLoading: monthlyLoading, error: monthlyError } = useDailySummary(
     monthlyStartDate,
     monthlyEndDate,
     monthlyHub || null
   )
 
-  const { data: customData, isLoading: customLoading } = useDailySummary(
+  const { data: customData, isLoading: customLoading, error: customError } = useDailySummary(
     customStartDate,
     customEndDate,
     customHub || null
@@ -2729,9 +2729,19 @@ export function Reports() {
   return (
     <div>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text">Reports</h1>
+        <h1 className="text-2xl font-bold text-text">SMARO Reports</h1>
         <p className="text-gray-600 mt-1">Daily, weekly, monthly, and custom summaries</p>
       </div>
+
+      {(dailyError || weeklyError || monthlyError || customError) && (
+        <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4 text-sm text-red-800">
+          {(dailyError as Error)?.message ||
+            (weeklyError as Error)?.message ||
+            (monthlyError as Error)?.message ||
+            (customError as Error)?.message ||
+            'Failed to load reports data.'}
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="mb-6">

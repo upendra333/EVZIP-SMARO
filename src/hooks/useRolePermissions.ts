@@ -28,8 +28,9 @@ export function useRolePermissions() {
       
       // Transform database response to our format
       const permissionsMap: Record<string, Permission[]> = {}
-      data.forEach((row: { role: string; permissions: string[] }) => {
-        permissionsMap[row.role] = row.permissions as Permission[]
+      data.forEach((row: { role: string; permissions: unknown }) => {
+        const values = Array.isArray(row.permissions) ? row.permissions : []
+        permissionsMap[row.role] = values as Permission[]
       })
       
       return permissionsMap
@@ -47,7 +48,7 @@ export function useUpdateRolePermissions() {
     mutationFn: async ({ role, permissions }: { role: string; permissions: Permission[] }) => {
       const { data, error } = await supabase.rpc('update_role_permissions', {
         p_role: role,
-        p_permissions: permissions,
+        p_permissions: JSON.stringify(permissions),
       })
       
       if (error) {

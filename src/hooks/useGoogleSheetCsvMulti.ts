@@ -8,10 +8,34 @@ import {
 
 export type SheetRowWithMeta = Record<string, string> & { __sheet: string }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms))
+}
+
 async function fetchText(url: string): Promise<string> {
-  const res = await fetch(url)
-  if (!res.ok) throw new Error(`Failed to fetch sheet CSV (${res.status})`)
-  return await res.text()
+  const maxAttempts = 4
+  let attempt = 0
+
+  while (attempt < maxAttempts) {
+    attempt += 1
+    const res = await fetch(url)
+    if (res.ok) return await res.text()
+
+    const retryable = res.status === 429 || res.status >= 500
+    if (!retryable || attempt >= maxAttempts) {
+      throw new Error(`Failed to fetch sheet CSV (${res.status})`)
+    }
+
+    const backoffMs = 700 * Math.pow(2, attempt - 1)
+    await sleep(backoffMs)
+  }
+
+  throw new Error('Failed to fetch sheet CSV')
+}
+
+function shouldRetry(error: unknown): boolean {
+  const message = error instanceof Error ? error.message : ''
+  return message.includes('(429)') || message.includes('(5')
 }
 
 function parseCsv(text: string): Record<string, string>[] {
@@ -117,6 +141,8 @@ export function useGoogleSheetCsvMulti(params: {
     queryKey,
     enabled: enabled && !!spreadsheetId,
     refetchInterval: refetchIntervalMs,
+    retry: (failureCount, error) => shouldRetry(error) && failureCount < 2,
+    retryDelay: (attemptIndex) => Math.min(1500 * Math.pow(2, attemptIndex), 8000),
     queryFn: async () => {
       if (!spreadsheetId) return []
 
@@ -147,21 +173,24 @@ export function useGoogleSheetCsvMulti(params: {
         return rows.map((r) => ({ ...r, __sheet: 'Sheet1' }))
       }
 
-      const results = await Promise.all(
-        effectiveTabs.map(async (t) => {
-          const url = buildGoogleSheetCsvUrl({ spreadsheetId, sheetName: t.name, gid: t.gid })
-          const text = await fetchText(url)
-          const rows = parseCsv(text)
-          const inferredName = rows.length ? pickVehicleLikeValue(rows[0]) : ''
-          const sheetLabel =
-            !isGenericSheetName(t.name) && t.name.trim()
-              ? t.name
-              : inferredName || (t.gid ? `Sheet-${t.gid}` : t.name || 'Sheet1')
-          return rows.map((r) => ({ ...r, __sheet: sheetLabel }))
-        })
-      )
+      const allRows: SheetRowWithMeta[] = []
+      for (const t of effectiveTabs) {
+        const url = buildGoogleSheetCsvUrl({ spreadsheetId, sheetName: t.name, gid: t.gid })
+        const text = await fetchText(url)
+        const rows = parseCsv(text)
+        const inferredName = rows.length ? pickVehicleLikeValue(rows[0]) : ''
+        const sheetLabel =
+          !isGenericSheetName(t.name) && t.name.trim()
+            ? t.name
+            : inferredName || (t.gid ? `Sheet-${t.gid}` : t.name || 'Sheet1')
 
-      return results.flat()
+        allRows.push(...rows.map((r) => ({ ...r, __sheet: sheetLabel })))
+
+        // Small gap reduces request bursts against Google Sheets.
+        await sleep(120)
+      }
+
+      return allRows
     },
   })
 }

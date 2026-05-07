@@ -17,7 +17,7 @@ function getRoleLabel(role: string): string {
 }
 
 export function UserManagement() {
-  const { data: users, isLoading } = useUsers()
+  const { data: users, isLoading, error } = useUsers()
   const { data: hubs } = useHubs()
   const { can } = useOperator()
   const { data: rolePermissions } = useRolePermissions()
@@ -165,6 +165,10 @@ export function UserManagement() {
 
       {isLoading ? (
         <div className="text-center py-8">Loading...</div>
+      ) : error ? (
+        <div className="bg-red-50 border border-red-200 rounded-lg p-4 text-red-800">
+          Unable to load users: {(error as Error).message}
+        </div>
       ) : (
         <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
           <table className="w-full">

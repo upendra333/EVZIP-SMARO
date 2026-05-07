@@ -40,7 +40,15 @@ export function useWeeklySummary(fromDate: string, toDate: string, hubId?: strin
         p_hub_id: hubId || null,
       })
 
-      if (error) throw error
+      if (error) {
+        if (error.code === '42501' || error.message?.toLowerCase().includes('permission denied')) {
+          throw new Error('Permission denied for weekly_summary. Run database/27_fix_smaro_reports_analytics_access.sql in Supabase SQL Editor.')
+        }
+        if (error.code === '42883' || error.message?.includes('function') || error.message?.includes('does not exist')) {
+          throw new Error('Database function weekly_summary not found. Run required DB migrations (02_functions.sql or later).')
+        }
+        throw error
+      }
       return (data || []) as WeeklySummaryRow[]
     },
     enabled: !!fromDate && !!toDate,
