@@ -89,13 +89,22 @@ function toNumberOrZero(value: string): number {
   return Number.isFinite(n) ? n : 0
 }
 
+function normalizeKey(value: string): string {
+  return (value || '').trim().toLowerCase()
+}
+
+function formatLabel(value: string): string {
+  return (value || '').trim().replace(/\s+/g, ' ').toUpperCase()
+}
+
 function aggregateBy(trips: NormalizedTrip[], keyGetter: (trip: NormalizedTrip) => string): AggregateRow[] {
   const map = new Map<string, AggregateRow>()
 
   trips.forEach((trip) => {
-    const key = keyGetter(trip).trim() || 'Unknown'
+    const rawValue = keyGetter(trip).trim() || 'Unknown'
+    const key = normalizeKey(rawValue) || 'unknown'
     const current = map.get(key) || {
-      dimension: key,
+      dimension: formatLabel(rawValue) || 'UNKNOWN',
       trips: 0,
       totalRevenue: 0,
       upi: 0,
@@ -238,15 +247,42 @@ export function RideHailingReports() {
   }, [trips, effectiveDateFrom, effectiveDateTo, selectedHub, selectedPilot, selectedVehicle])
 
   const hubOptions = useMemo(
-    () => Array.from(new Set(trips.map((t) => t.hub.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    () => {
+      const map = new Map<string, string>()
+      trips.forEach((t) => {
+        const raw = t.hub.trim()
+        if (!raw) return
+        const key = normalizeKey(raw)
+        if (!map.has(key)) map.set(key, formatLabel(raw))
+      })
+      return Array.from(map.values()).sort((a, b) => a.localeCompare(b))
+    },
     [trips]
   )
   const pilotOptions = useMemo(
-    () => Array.from(new Set(trips.map((t) => t.pilotId.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    () => {
+      const map = new Map<string, string>()
+      trips.forEach((t) => {
+        const raw = t.pilotId.trim()
+        if (!raw) return
+        const key = normalizeKey(raw)
+        if (!map.has(key)) map.set(key, formatLabel(raw))
+      })
+      return Array.from(map.values()).sort((a, b) => a.localeCompare(b))
+    },
     [trips]
   )
   const vehicleOptions = useMemo(
-    () => Array.from(new Set(trips.map((t) => t.vehicleNumber.trim()).filter(Boolean))).sort((a, b) => a.localeCompare(b)),
+    () => {
+      const map = new Map<string, string>()
+      trips.forEach((t) => {
+        const raw = t.vehicleNumber.trim()
+        if (!raw) return
+        const key = normalizeKey(raw)
+        if (!map.has(key)) map.set(key, formatLabel(raw))
+      })
+      return Array.from(map.values()).sort((a, b) => a.localeCompare(b))
+    },
     [trips]
   )
 

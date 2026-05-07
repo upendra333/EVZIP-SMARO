@@ -10,6 +10,7 @@ export const BRAND_COLORS = {
 export const ROUTES = {
   DASHBOARD: '/',
   RIDE_HAILING_DASHBOARD: '/dashboard',
+  RIDE_HAILING_ANALYTICS: '/dashboard/ride-hailing-analytics',
   SUBSCRIPTIONS: '/subscriptions',
   AIRPORT: '/airport',
   RENTALS: '/rentals',
@@ -35,7 +36,15 @@ export type NavigationItem = {
 }
 
 export const NAVIGATION_ITEMS: NavigationItem[] = [
-  { name: 'Dashboard', path: ROUTES.RIDE_HAILING_DASHBOARD, icon: '📊', permission: PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD },
+  {
+    name: 'Dashboard',
+    path: ROUTES.RIDE_HAILING_DASHBOARD,
+    icon: '📊',
+    permission: PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD,
+    children: [
+      { name: 'Ride Hailing Analytics', path: ROUTES.RIDE_HAILING_ANALYTICS, icon: '📈', permission: PERMISSIONS.VIEW_RIDE_HAILING_DASHBOARD },
+    ],
+  },
   {
     name: 'Ride Hailing',
     path: ROUTES.RIDE_HAILING,
