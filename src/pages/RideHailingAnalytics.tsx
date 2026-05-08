@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   ResponsiveContainer,
   CartesianGrid,
@@ -19,7 +19,7 @@ import { useRideHailingColumnMap } from '../hooks/useRideHailingColumnMap'
 import type { GoogleSheetTab } from '../utils/googleSheets'
 import { exportToCSV } from '../utils/csvExport'
 
-type PeriodPreset = 'today' | 'last_7_days' | 'this_month' | 'custom'
+type PeriodPreset = 'today' | 'last_7_days' | 'this_month' | 'last_month' | 'custom'
 
 type Trip = {
   ts: Date | null
@@ -122,6 +122,11 @@ function hubKey(value: string): string {
   return normalizeKey(value?.trim() || '') || 'unknown'
 }
 
+function isLowVisibility(value: number, maxValue: number): boolean {
+  if (maxValue <= 0) return false
+  return value < maxValue * 0.1
+}
+
 export function RideHailingAnalytics() {
   const defaultSheetUrl =
     'https://docs.google.com/spreadsheets/d/1W89iEvjkkDG9JASIOTDtQE6QSRCtdgzuQb-hXShcy_Y/edit?usp=sharing'
@@ -203,6 +208,11 @@ export function RideHailingAnalytics() {
       const end = new Date(now.getFullYear(), now.getMonth() + 1, 0, 23, 59, 59, 999)
       return { fromDate: start, toDate: end }
     }
+    if (period === 'last_month') {
+      const start = new Date(now.getFullYear(), now.getMonth() - 1, 1, 0, 0, 0, 0)
+      const end = new Date(now.getFullYear(), now.getMonth(), 0, 23, 59, 59, 999)
+      return { fromDate: start, toDate: end }
+    }
     return {
       fromDate: customFrom ? new Date(`${customFrom}T00:00:00`) : null,
       toDate: customTo ? new Date(`${customTo}T23:59:59.999`) : null,
@@ -231,8 +241,10 @@ export function RideHailingAnalytics() {
   }, [baseFiltered])
 
   const vehicleOptions = useMemo(() => {
+    const scopedTrips =
+      selectedHub === 'all' ? baseFiltered : baseFiltered.filter((t) => hubKey(t.hub) === selectedHub)
     const map = new Map<string, string>()
-    baseFiltered.forEach((t) => {
+    scopedTrips.forEach((t) => {
       const key = normalizeKey(t.vehicle) || 'unknown'
       const label = (t.vehicle || '').trim() || 'UNKNOWN'
       if (!map.has(key)) map.set(key, label)
@@ -240,11 +252,19 @@ export function RideHailingAnalytics() {
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label))
-  }, [baseFiltered])
+  }, [baseFiltered, selectedHub])
+
+  useEffect(() => {
+    if (selectedVehicle === 'all') return
+    const selectedVehicleStillVisible = vehicleOptions.some((option) => option.value === selectedVehicle)
+    if (!selectedVehicleStillVisible) setSelectedVehicle('all')
+  }, [selectedVehicle, vehicleOptions])
 
   const pilotOptions = useMemo(() => {
+    const scopedTrips =
+      selectedHub === 'all' ? baseFiltered : baseFiltered.filter((t) => hubKey(t.hub) === selectedHub)
     const map = new Map<string, string>()
-    baseFiltered.forEach((t) => {
+    scopedTrips.forEach((t) => {
       const key = normalizeKey(t.pilot) || 'unknown'
       const label = (t.pilot || '').trim() || 'UNKNOWN'
       if (!map.has(key)) map.set(key, label)
@@ -252,7 +272,13 @@ export function RideHailingAnalytics() {
     return Array.from(map.entries())
       .map(([value, label]) => ({ value, label }))
       .sort((a, b) => a.label.localeCompare(b.label))
-  }, [baseFiltered])
+  }, [baseFiltered, selectedHub])
+
+  useEffect(() => {
+    if (selectedPilot === 'all') return
+    const selectedPilotStillVisible = pilotOptions.some((option) => option.value === selectedPilot)
+    if (!selectedPilotStillVisible) setSelectedPilot('all')
+  }, [selectedPilot, pilotOptions])
 
   const filtered = useMemo(() => {
     return baseFiltered.filter((t) => {
@@ -310,17 +336,59 @@ export function RideHailingAnalytics() {
   )
 
   const hubTrend = useMemo(() => {
-    const map = new Map<string, { hub: string; trips: number; revenue: number }>()
+    const map = new Map<
+      string,
+      { hub: string; trips: number; revenue: number; vehicles: Set<string>; pilots: Set<string> }
+    >()
     filtered.forEach((t) => {
       const raw = t.hub?.trim() || 'Unknown'
       const key = hubKey(raw)
-      const current = map.get(key) || { hub: formatLabel(raw) || 'UNKNOWN', trips: 0, revenue: 0 }
+      const current = map.get(key) || {
+        hub: formatLabel(raw) || 'UNKNOWN',
+        trips: 0,
+        revenue: 0,
+        vehicles: new Set<string>(),
+        pilots: new Set<string>(),
+      }
       current.trips += 1
       current.revenue += t.total
+      current.vehicles.add(normalizeKey(t.vehicle) || 'unknown')
+      current.pilots.add(normalizeKey(t.pilot) || 'unknown')
       map.set(key, current)
     })
-    return Array.from(map.values()).sort((a, b) => b.revenue - a.revenue)
+    return Array.from(map.values())
+      .map((item) => ({
+        hub: item.hub,
+        trips: item.trips,
+        revenue: item.revenue,
+        vehicles: item.vehicles.size,
+        pilots: item.pilots.size,
+      }))
+      .sort((a, b) => b.revenue - a.revenue)
   }, [filtered])
+
+  const lowVisibilityDaily = useMemo(() => {
+    const maxTrips = dailyTrend.reduce((max, item) => Math.max(max, item.trips), 0)
+    const maxRevenue = dailyTrend.reduce((max, item) => Math.max(max, item.revenue), 0)
+    return dailyTrend.filter((item) => isLowVisibility(item.trips, maxTrips) || isLowVisibility(item.revenue, maxRevenue))
+  }, [dailyTrend])
+
+  const lowVisibilityService = useMemo(() => {
+    const maxTrips = serviceTrend.reduce((max, item) => Math.max(max, item.trips), 0)
+    const maxRevenue = serviceTrend.reduce((max, item) => Math.max(max, item.revenue), 0)
+    return serviceTrend.filter((item) => isLowVisibility(item.trips, maxTrips) || isLowVisibility(item.revenue, maxRevenue))
+  }, [serviceTrend])
+
+  const lowVisibilityPayment = useMemo(() => {
+    const maxValue = paymentBreakup.reduce((max, item) => Math.max(max, item.value), 0)
+    return paymentBreakup.filter((item) => isLowVisibility(item.value, maxValue))
+  }, [paymentBreakup])
+
+  const lowVisibilityHub = useMemo(() => {
+    const maxTrips = hubTrend.reduce((max, item) => Math.max(max, item.trips), 0)
+    const maxRevenue = hubTrend.reduce((max, item) => Math.max(max, item.revenue), 0)
+    return hubTrend.filter((item) => isLowVisibility(item.trips, maxTrips) || isLowVisibility(item.revenue, maxRevenue))
+  }, [hubTrend])
 
   const unitEconomics = useMemo(() => {
     const days = new Set(filtered.map((t) => dateKey(t.ts)).filter(Boolean)).size
@@ -386,6 +454,23 @@ export function RideHailingAnalytics() {
     exportToCSV(hubTrend, 'ride_hailing_analytics_hub_performance')
   }
 
+  const renderHubTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null
+    const row = payload[0]?.payload
+    if (!row) return null
+    return (
+      <div className="rounded-lg border border-gray-200 bg-white p-3 shadow-sm">
+        <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">{row.hub}</p>
+        <div className="space-y-1 text-sm" style={{ color: EVZIP_COLORS.text }}>
+          <p>Total Trips: {row.trips}</p>
+          <p>Revenue: ₹{Number(row.revenue || 0).toFixed(2)}</p>
+          <p>Vehicles: {row.vehicles}</p>
+          <p>Pilots: {row.pilots}</p>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -410,6 +495,7 @@ export function RideHailingAnalytics() {
               <option value="today">Today</option>
               <option value="last_7_days">Last 7 Days</option>
               <option value="this_month">This Month</option>
+              <option value="last_month">Last Month</option>
               <option value="custom">Custom</option>
             </select>
           </div>
@@ -597,6 +683,31 @@ export function RideHailingAnalytics() {
                 <Bar yAxisId="right" dataKey="revenue" fill={EVZIP_COLORS.textSoft} name="Revenue" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
+            {lowVisibilityDaily.length > 0 && (
+              <div className="mt-4 border border-gray-100 rounded-lg p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                  Low Visibility Days (Under 10% of Peak)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {lowVisibilityDaily.map((item) => (
+                    <button
+                      key={item.day}
+                      type="button"
+                      onClick={() =>
+                        exportTrips(
+                          filtered.filter((t) => dateKey(t.ts) === item.day),
+                          `ride_hailing_analytics_daily_${item.day}`
+                        )
+                      }
+                      className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 text-xs"
+                      title={`Trips: ${item.trips}, Revenue: ₹${item.revenue.toFixed(2)}`}
+                    >
+                      {item.day} - Download
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
@@ -648,6 +759,34 @@ export function RideHailingAnalytics() {
                   />
                 </BarChart>
               </ResponsiveContainer>
+              {lowVisibilityService.length > 0 && (
+                <div className="mt-4 border border-gray-100 rounded-lg p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                    Low Visibility Services (Under 10% of Peak)
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {lowVisibilityService.map((item) => {
+                      const selected = serviceKey(item.service)
+                      return (
+                        <button
+                          key={item.service}
+                          type="button"
+                          onClick={() =>
+                            exportTrips(
+                              filtered.filter((t) => serviceKey(t.service) === selected),
+                              `ride_hailing_analytics_service_${selected}`
+                            )
+                          }
+                          className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 text-xs"
+                          title={`Trips: ${item.trips}, Revenue: ₹${item.revenue.toFixed(2)}`}
+                        >
+                          {item.service} - Download
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="bg-white rounded-lg border border-gray-200 p-4">
@@ -693,6 +832,38 @@ export function RideHailingAnalytics() {
                   <Legend />
                 </PieChart>
               </ResponsiveContainer>
+              {lowVisibilityPayment.length > 0 && (
+                <div className="mt-4 border border-gray-100 rounded-lg p-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                    Low Visibility Payment Modes (Under 10% of Peak)
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {lowVisibilityPayment.map((item) => {
+                      const name = item.name.toLowerCase()
+                      return (
+                        <button
+                          key={item.name}
+                          type="button"
+                          onClick={() => {
+                            const modeFiltered = filtered.filter((t) => {
+                              if (name === 'upi') return t.upi > 0
+                              if (name === 'cash') return t.cash > 0
+                              if (name === 'uber') return t.uber > 0
+                              if (name === 'tip') return t.tip > 0
+                              return false
+                            })
+                            exportTrips(modeFiltered, `ride_hailing_analytics_payment_${name}`)
+                          }}
+                          className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 text-xs"
+                          title={`Value: ₹${item.value.toFixed(2)}`}
+                        >
+                          {item.name} - Download
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
           </div>
 
@@ -714,7 +885,7 @@ export function RideHailingAnalytics() {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis dataKey="hub" />
                 <YAxis />
-                <Tooltip />
+                <Tooltip content={renderHubTooltip} />
                 <Legend />
                 <Bar
                   dataKey="trips"
@@ -744,45 +915,34 @@ export function RideHailingAnalytics() {
                 />
               </BarChart>
             </ResponsiveContainer>
-            <div className="mt-4">
-              <p className="text-xs text-gray-500 mb-2">
-                If a bar is too small to click, use these per-hub download actions.
-              </p>
-              <div className="max-h-56 overflow-auto border border-gray-100 rounded-lg">
-                <table className="min-w-full text-sm">
-                  <thead className="bg-gray-50">
-                    <tr>
-                      <th className="px-3 py-2 text-left font-medium text-gray-700">Hub</th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-700">Trips</th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-700">Revenue</th>
-                      <th className="px-3 py-2 text-right font-medium text-gray-700">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {hubTrend.map((row) => {
-                      const selected = hubKey(row.hub)
-                      const rowTrips = filtered.filter((t) => hubKey(t.hub) === selected)
-                      return (
-                        <tr key={row.hub} className="border-t border-gray-100">
-                          <td className="px-3 py-2">{row.hub}</td>
-                          <td className="px-3 py-2 text-right">{row.trips}</td>
-                          <td className="px-3 py-2 text-right">₹{row.revenue.toFixed(2)}</td>
-                          <td className="px-3 py-2 text-right">
-                            <button
-                              type="button"
-                              onClick={() => exportTrips(rowTrips, `ride_hailing_analytics_hub_${selected}`)}
-                              className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50"
-                            >
-                              Download
-                            </button>
-                          </td>
-                        </tr>
-                      )
-                    })}
-                  </tbody>
-                </table>
+            {lowVisibilityHub.length > 0 && (
+              <div className="mt-4 border border-gray-100 rounded-lg p-3">
+                <p className="text-xs font-semibold uppercase tracking-wide text-gray-500 mb-2">
+                  Low Visibility Hubs (Under 10% of Peak)
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {lowVisibilityHub.map((row) => {
+                    const selected = hubKey(row.hub)
+                    return (
+                      <button
+                        key={row.hub}
+                        type="button"
+                        onClick={() =>
+                          exportTrips(
+                            filtered.filter((t) => hubKey(t.hub) === selected),
+                            `ride_hailing_analytics_hub_${selected}`
+                          )
+                        }
+                        className="px-2.5 py-1 rounded border border-gray-300 hover:bg-gray-50 text-xs"
+                        title={`Trips: ${row.trips}, Revenue: ₹${row.revenue.toFixed(2)}`}
+                      >
+                        {row.hub} - Download
+                      </button>
+                    )
+                  })}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </>
       )}
